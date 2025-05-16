@@ -1,8 +1,8 @@
 // src/components/ReplyGeneratorForm.tsx
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useState, useEffect, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -80,7 +80,7 @@ function SubmitButton() {
 }
 
 export function ReplyGeneratorForm() {
-  const [state, formAction] = useFormState(handleGenerateReplyAction, initialState);
+  const [state, formAction] = useActionState(handleGenerateReplyAction, initialState);
   const { toast } = useToast();
   const [generatedReply, setGeneratedReply] = useState<string | undefined>(undefined);
    
