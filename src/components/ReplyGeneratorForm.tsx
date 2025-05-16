@@ -2,8 +2,8 @@
 // src/components/ReplyGeneratorForm.tsx
 "use client";
 
-import { useState, useEffect, useActionState } from "react";
-import { useFormStatus } from "react-dom";
+import { useState, useEffect, useActionState } from "react"; // Corrected: useActionState from "react"
+import { useFormStatus } from "react-dom"; // useFormStatus from "react-dom"
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -100,16 +100,15 @@ export function ReplyGeneratorForm() {
         title: "回覆已產生！",
         description: "AI已建議一個回覆。",
       });
-      form.reset(); // Reset form fields after successful generation
+      form.reset();
     }
-    if (state?.error && !state?.fieldErrors) { // Only show general error toast if no field errors
+    if (state?.error && !state?.fieldErrors) {
       toast({
         variant: "destructive",
         title: "產生回覆時發生錯誤",
         description: state.error,
       });
     }
-    // Field errors are handled by FormMessage components if they exist in state.fieldErrors
      if (state?.fieldErrors?.scenario) {
       form.setError("scenario", { type: "server", message: state.fieldErrors.scenario[0] });
     }
@@ -153,11 +152,11 @@ export function ReplyGeneratorForm() {
         <CardContent>
           <Form {...form}>
             <form action={formAction} className="space-y-6" onSubmit={form.handleSubmit(
-                (data) => { // data is validated form data
+                (data) => {
                     const formData = new FormData();
                     formData.append("scenario", data.scenario);
                     formData.append("parentMessage", data.parentMessage);
-                    setGeneratedReply(undefined); // Clear previous reply
+                    setGeneratedReply(undefined);
                     formAction(formData);
                 }
             )}>
@@ -249,7 +248,7 @@ export function ReplyGeneratorForm() {
               value={generatedReply}
               readOnly
               rows={8}
-              className="bg-secondary/50 border-border focus-visible:ring-accent"
+              className="w-full bg-secondary/30 text-foreground p-3 rounded-md shadow-inner text-sm leading-relaxed focus-visible:ring-accent border-border"
             />
           </CardContent>
           <CardFooter className="flex justify-end">
@@ -263,3 +262,5 @@ export function ReplyGeneratorForm() {
     </div>
   );
 }
+
+    
