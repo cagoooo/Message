@@ -272,7 +272,7 @@ export function ReplyGeneratorForm() {
             />
           </CardContent>
           <CardFooter className="flex justify-end">
-            <Button onClick={handleCopyReply} variant="outline">
+            <Button onClick={handleCopyReply} variant="default">
               <Copy className="mr-2 h-4 w-4" />
               複製回覆
             </Button>
