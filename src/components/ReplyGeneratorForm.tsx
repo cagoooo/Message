@@ -2,8 +2,8 @@
 // src/components/ReplyGeneratorForm.tsx
 "use client";
 
-import { useState, useEffect, useActionState } from "react"; // Corrected: useActionState from "react"
-import { useFormStatus } from "react-dom"; // useFormStatus from "react-dom"
+import { useState, useEffect, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -52,6 +52,12 @@ const scenarios = [
   { value: "Irrational Message", label: "回應不理性訊息" },
   { value: "Academic Concern", label: "學業問題" },
   { value: "Behavioral Issue", label: "行為問題" },
+  { value: "Positive Feedback", label: "家長正面回饋" },
+  { value: "Request for Meeting", label: "家長要求會面" },
+  { value: "Missed Homework/Assignment", label: "缺交作業" },
+  { value: "Upcoming Event Inquiry", label: "活動詢問" },
+  { value: "Health Concern", label: "健康問題（如過敏、生病）" },
+  { value: "General Inquiry", label: "一般詢問" },
   { value: "Other", label: "其他" },
 ];
 
@@ -156,7 +162,7 @@ export function ReplyGeneratorForm() {
                     const formData = new FormData();
                     formData.append("scenario", data.scenario);
                     formData.append("parentMessage", data.parentMessage);
-                    setGeneratedReply(undefined);
+                    setGeneratedReply(undefined); // Clear previous reply when submitting
                     formAction(formData);
                 }
             )}>
@@ -180,6 +186,9 @@ export function ReplyGeneratorForm() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormDescription>
+                      選擇最符合家長訊息的情境，有助於AI提供更精準的回覆建議。
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -262,5 +271,3 @@ export function ReplyGeneratorForm() {
     </div>
   );
 }
-
-    
