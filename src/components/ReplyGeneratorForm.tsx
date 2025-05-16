@@ -89,7 +89,7 @@ function SubmitButton({ isPending }: SubmitButtonProps) {
 }
 
 export function ReplyGeneratorForm() {
-  const [state, formAction, isActionPending] = useActionState(handleGenerateReplyAction, initialState);
+  const [state, formAction, isActionPendingOriginal] = useActionState(handleGenerateReplyAction, initialState);
   const [isTransitionPending, startTransition] = useTransition();
   const { toast } = useToast();
   const [generatedReply, setGeneratedReply] = useState<string | undefined>(undefined);
@@ -152,7 +152,7 @@ export function ReplyGeneratorForm() {
         <CardHeader className="text-center bg-primary/5 p-6">
           <div className="flex items-center justify-center mb-2">
             <BotMessageSquare className="h-10 w-10 text-primary mr-3" />
-            <CardTitle className="text-4xl font-bold tracking-tight text-primary">教師小幫手</CardTitle>
+            <CardTitle className="text-4xl font-bold tracking-tight text-primary">教師回應訊息建議小幫手</CardTitle>
           </div>
           <CardDescription className="text-lg text-muted-foreground/90 mt-1">
             為家長訊息獲取小幫手支援的同理心與專業回覆建議。
@@ -171,7 +171,7 @@ export function ReplyGeneratorForm() {
                         formData.append("parentMessage", data.parentMessage);
                         setGeneratedReply(undefined); 
                         startTransition(() => {
-                          formAction(formData);
+                           formAction(formData);
                         });
                     }
                 )();
