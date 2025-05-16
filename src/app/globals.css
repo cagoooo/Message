@@ -33,7 +33,7 @@ body {
     --destructive-foreground: 0 0% 98%;
 
     --border: 240 20% 85%; /* Lavender-grey border */
-    --input: 0 0% 98%; /* Slightly off-white, distinct from card */
+    --input: 240 40% 97%; /* Very pale lavender input background */
     --ring: 195 50% 70%; /* Gentle blue for focus ring */
 
     --chart-1: 12 76% 61%;
@@ -80,7 +80,7 @@ body {
     --destructive-foreground: 0 0% 98%;
 
     --border: 240 10% 25%;
-    --input: 240 10% 18%;
+    --input: 250 15% 22%; /* Dark, muted lavender/purple input background */
     --ring: 195 55% 75%; /* Gentle blue for focus ring */
     
     --chart-1: 220 70% 50%;
