@@ -1,8 +1,8 @@
-
 // src/components/ReplyGeneratorForm.tsx
 "use client";
 
 import { useState, useEffect, useActionState, useTransition } from "react";
+import { useFormStatus } from "react-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -109,7 +109,7 @@ export function ReplyGeneratorForm() {
         title: "回覆已產生！",
         description: "AI已建議一個回覆。",
       });
-      form.reset(); // Reset form after successful generation
+      form.reset(); 
     }
     if (state?.error && !state?.fieldErrors) {
       toast({
@@ -161,7 +161,6 @@ export function ReplyGeneratorForm() {
         <CardContent>
           <Form {...form}>
             <form
-              action={formAction} 
               className="space-y-6"
               onSubmit={form.handleSubmit(
                 (data) => {
@@ -265,7 +264,7 @@ export function ReplyGeneratorForm() {
               value={generatedReply}
               readOnly
               rows={8}
-              className="w-full bg-secondary/30 text-foreground p-3 rounded-md shadow-inner text-sm leading-relaxed focus-visible:ring-accent border-border"
+              className="w-full bg-secondary text-secondary-foreground p-3 rounded-md shadow-inner text-sm leading-relaxed focus-visible:ring-accent border-border"
             />
           </CardContent>
           <CardFooter className="flex justify-end">
@@ -279,4 +278,3 @@ export function ReplyGeneratorForm() {
     </div>
   );
 }
-
