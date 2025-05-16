@@ -1,3 +1,4 @@
+
 // src/ai/flows/generate-parent-reply.ts
 'use server';
 
@@ -33,13 +34,15 @@ const generateParentReplyPrompt = ai.definePrompt({
   name: 'generateParentReplyPrompt',
   input: {schema: GenerateParentReplyInputSchema},
   output: {schema: GenerateParentReplyOutputSchema},
-  prompt: `You are a helpful and empathetic teacher assistant. Your task is to generate a professional and understanding reply to a parent's message. Consider the scenario provided to tailor the response appropriately.
+  prompt: `你是一位樂於助人且富有同理心的教師助理。你的任務是針對家長的訊息，產生專業且易於理解的回覆。
+請使用繁體中文（台灣慣用詞彙與表達方式）來撰寫回覆。
+請考量提供的情境，以便適當地調整回覆內容。
 
-Parent's Message: {{{parentMessage}}}
+家長的訊息: {{{parentMessage}}}
 
-Scenario: {{{scenario}}}
+情境: {{{scenario}}}
 
-Generate a reply that addresses the parent's concerns, offers support, and proposes a clear course of action. The reply should be professional, empathetic, and solution-oriented.`,
+請產生一則回覆，該回覆需能回應家長的關切、提供支持，並提出明確的行動方針。回覆應具備專業性、同理心，並以解決問題為導向。`,
 });
 
 const generateParentReplyFlow = ai.defineFlow(
