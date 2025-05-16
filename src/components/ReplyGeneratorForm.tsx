@@ -2,8 +2,8 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { useActionState } from "react"; // Corrected: useActionState from react
-import { useFormStatus } from "react-dom"; // Correct: useFormStatus from react-dom
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom"; 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -210,7 +210,7 @@ export function ReplyGeneratorForm() {
                 name="parentMessage"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>家長訊息</FormLabel>
+                    <FormLabel>家長訊息or陳述狀況</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="在此貼上家長的訊息，或簡要描述情況..."
