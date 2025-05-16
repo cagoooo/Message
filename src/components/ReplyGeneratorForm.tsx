@@ -2,8 +2,7 @@
 // src/components/ReplyGeneratorForm.tsx
 "use client";
 
-import { useState, useEffect, useActionState } from "react";
-import { useFormStatus } from "react-dom";
+import { useState, useEffect, useActionState, useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -67,11 +66,14 @@ const initialState = {
   fieldErrors: undefined,
 };
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
+interface SubmitButtonProps {
+  isPending: boolean;
+}
+
+function SubmitButton({ isPending }: SubmitButtonProps) {
   return (
-    <Button type="submit" disabled={pending} className="w-full sm:w-auto">
-      {pending ? (
+    <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
+      {isPending ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           產生中...
@@ -88,6 +90,7 @@ function SubmitButton() {
 
 export function ReplyGeneratorForm() {
   const [state, formAction] = useActionState(handleGenerateReplyAction, initialState);
+  const [isSubmitting, startSubmitTransition] = useTransition();
   const { toast } = useToast();
   const [generatedReply, setGeneratedReply] = useState<string | undefined>(undefined);
 
@@ -106,7 +109,7 @@ export function ReplyGeneratorForm() {
         title: "回覆已產生！",
         description: "AI已建議一個回覆。",
       });
-      form.reset();
+      form.reset(); // Reset form after successful generation
     }
     if (state?.error && !state?.fieldErrors) {
       toast({
@@ -157,13 +160,18 @@ export function ReplyGeneratorForm() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form action={formAction} className="space-y-6" onSubmit={form.handleSubmit(
+            <form
+              action={formAction} 
+              className="space-y-6"
+              onSubmit={form.handleSubmit(
                 (data) => {
                     const formData = new FormData();
                     formData.append("scenario", data.scenario);
                     formData.append("parentMessage", data.parentMessage);
-                    setGeneratedReply(undefined); // Clear previous reply when submitting
-                    formAction(formData);
+                    setGeneratedReply(undefined); 
+                    startSubmitTransition(() => {
+                        formAction(formData);
+                    });
                 }
             )}>
               <FormField
@@ -187,7 +195,7 @@ export function ReplyGeneratorForm() {
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      選擇最符合家長訊息的情境，有助於AI提供更精準的回覆建議。
+                      選擇最符合家長訊息的情境，有助於AI提供更精準的回覆建議。下拉式選單將提供多種情境選項，讓老師可以挑選到最合適的狀況，並連動AI產生回覆。
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -215,14 +223,14 @@ export function ReplyGeneratorForm() {
                 )}
               />
               <CardFooter className="flex justify-center p-0 pt-4">
-                <SubmitButton />
+                <SubmitButton isPending={isSubmitting} />
               </CardFooter>
             </form>
           </Form>
         </CardContent>
       </Card>
 
-      {useFormStatus().pending && !generatedReply && (
+      {isSubmitting && !generatedReply && (
          <Card className="mt-6 shadow-xl">
           <CardHeader>
             <CardTitle className="text-xl flex items-center">
@@ -239,7 +247,7 @@ export function ReplyGeneratorForm() {
         </Card>
       )}
 
-      {state?.error && !state.fieldErrors && !useFormStatus().pending && (
+      {state?.error && !state.fieldErrors && !isSubmitting && (
         <Alert variant="destructive" className="mt-6">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>錯誤</AlertTitle>
@@ -247,7 +255,7 @@ export function ReplyGeneratorForm() {
         </Alert>
       )}
 
-      {generatedReply && !useFormStatus().pending && (
+      {generatedReply && !isSubmitting && (
         <Card className="mt-6 shadow-xl">
           <CardHeader>
             <CardTitle className="text-xl">建議回覆</CardTitle>
@@ -271,3 +279,4 @@ export function ReplyGeneratorForm() {
     </div>
   );
 }
+
