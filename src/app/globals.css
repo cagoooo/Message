@@ -8,33 +8,33 @@ body {
 
 @layer base {
   :root {
-    --background: 220 25% 97%; /* 非常淺的冷色調灰白 */
-    --foreground: 220 10% 20%; /* 深冷灰色 */
+    --background: 0 0% 94%; /* Light Grey (#F0F0F0) */
+    --foreground: 240 10% 25%; /* Dark Grey/Blue for text */
 
-    --card: 0 0% 100%; /* 白色卡片背景，與微調的背景形成對比 */
-    --card-foreground: 220 10% 20%; /* 卡片文字顏色，同主要文字 */
+    --card: 0 0% 100%; /* White */
+    --card-foreground: 240 10% 25%;
 
-    --popover: 0 0% 100%; /* 白色彈出框背景 */
-    --popover-foreground: 220 10% 20%; /* 彈出框文字 */
+    --popover: 0 0% 100%; /* White */
+    --popover-foreground: 240 10% 25%;
 
-    --primary: 250 75% 58%; /* 明亮的靛藍/紫色 */
-    --primary-foreground: 0 0% 100%; /* 白色 (用於主要按鈕等) */
+    --primary: 250 50% 65%; /* A usable Lavender */
+    --primary-foreground: 0 0% 100%; /* White text on Lavender buttons */
 
-    --secondary: 250 60% 95%; /* 非常淺的靛藍/紫色 */
-    --secondary-foreground: 250 70% 35%; /* 較深的靛藍/紫色文字 (用於輔助背景上) */
+    --secondary: 240 60% 95%; /* Very light lavender (close to #E6E6FA) */
+    --secondary-foreground: 250 50% 50%; /* Darker lavender text */
 
-    --muted: 220 20% 94%; /* 淺冷灰色 */
-    --muted-foreground: 220 10% 40%; /* 中冷灰色 */
+    --muted: 240 20% 90%; /* Muted lavender-grey */
+    --muted-foreground: 240 10% 45%; /* Medium lavender-grey text */
 
-    --accent: 330 80% 60%; /* 明亮的粉紅色 */
-    --accent-foreground: 0 0% 100%; /* 白色 (用於強調色背景上) */
+    --accent: 195 50% 70%; /* Gentle Blue (e.g. #ADD8E6 is approx HSL(195, 53%, 79%)) */
+    --accent-foreground: 240 10% 15%; /* Dark text on gentle blue accent */
 
-    --destructive: 0 84.2% 60.2%; /* 預設紅色 */
-    --destructive-foreground: 0 0% 98%; /* 預設白色 */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 220 20% 88%; /* 淺冷灰色邊框 */
-    --input: 220 20% 91%; /* 略深的冷灰色輸入框背景 */
-    --ring: 250 75% 58%; /* 主要顏色用於焦點環 */
+    --border: 240 20% 85%; /* Lavender-grey border */
+    --input: 0 0% 98%; /* Slightly off-white, distinct from card */
+    --ring: 195 50% 70%; /* Gentle blue for focus ring */
 
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
@@ -55,33 +55,33 @@ body {
   }
 
   .dark {
-    --background: 220 40% 9%; /* 深邃的暗藍色 */
-    --foreground: 210 30% 96%; /* 淺冷灰色文字 */
+    --background: 240 10% 10%; /* Dark desaturated blue */
+    --foreground: 240 20% 90%; /* Light lavender grey text */
 
-    --card: 220 35% 14%; /* 略微提亮且飽和度稍高的暗藍色卡片 */
-    --card-foreground: 210 30% 96%;
+    --card: 240 10% 15%;
+    --card-foreground: 240 20% 90%;
 
-    --popover: 220 35% 11%; /* 更深的暗藍色浮出視窗 */
-    --popover-foreground: 210 30% 96%;
+    --popover: 240 10% 12%;
+    --popover-foreground: 240 20% 90%;
 
-    --primary: 250 70% 65%; /* 明亮的靛藍/紫色 (暗色模式下稍亮) */
-    --primary-foreground: 0 0% 100%; 
+    --primary: 250 60% 75%; /* Lighter lavender for dark mode */
+    --primary-foreground: 250 25% 10%; /* Dark text on primary */
 
-    --secondary: 250 50% 22%; /* 深靛藍/紫色 */
-    --secondary-foreground: 250 60% 88%; /* 較淺的靛藍/紫色文字 (用於輔助背景上) */
+    --secondary: 240 15% 25%; /* Darker, muted lavender */
+    --secondary-foreground: 240 30% 80%; /* Lighter text on secondary */
 
-    --muted: 220 25% 18%; /* 深藍灰色 */
-    --muted-foreground: 220 15% 65%; /* 較淺的柔和文字 */
+    --muted: 240 10% 20%;
+    --muted-foreground: 240 15% 60%;
 
-    --accent: 330 75% 68%; /* 明亮的粉紅色 (暗色模式下稍作調整) */
-    --accent-foreground: 0 0% 100%;
+    --accent: 195 55% 75%; /* Gentle blue, slightly brighter for dark mode */
+    --accent-foreground: 195 25% 15%; /* Dark text on accent */
 
-    --destructive: 0 70% 55%; /* 調整後的紅色 (暗色模式) */
+    --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 220 25% 25%; /* 暗藍灰色邊框 */
-    --input: 220 25% 20%; /* 暗藍灰色輸入框背景 */
-    --ring: 250 70% 65%; /* 主要顏色用於焦點環 (暗色模式) */
+    --border: 240 10% 25%;
+    --input: 240 10% 18%;
+    --ring: 195 55% 75%; /* Gentle blue for focus ring */
     
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
