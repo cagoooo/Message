@@ -107,7 +107,7 @@ export function ReplyGeneratorForm() {
       setGeneratedReply(state.reply);
       toast({
         title: "回覆已產生！",
-        description: "AI已建議一個回覆。",
+        description: "小幫手已建議一個回覆。",
       });
       form.reset(); 
     }
@@ -152,10 +152,10 @@ export function ReplyGeneratorForm() {
         <CardHeader className="text-center bg-primary/5 p-6">
           <div className="flex items-center justify-center mb-2">
             <BotMessageSquare className="h-10 w-10 text-primary mr-3" />
-            <CardTitle className="text-4xl font-bold tracking-tight text-primary">教師AI助理</CardTitle>
+            <CardTitle className="text-4xl font-bold tracking-tight text-primary">教師小幫手</CardTitle>
           </div>
           <CardDescription className="text-lg text-muted-foreground/90 mt-1">
-            為家長訊息獲取AI支援的同理心與專業回覆建議。
+            為家長訊息獲取小幫手支援的同理心與專業回覆建議。
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -197,7 +197,7 @@ export function ReplyGeneratorForm() {
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      選擇最符合家長訊息的情境，有助於AI提供更精準的回覆建議。下拉式選單將提供多種情境選項，讓老師可以挑選到最合適的狀況，並連動AI產生回覆。
+                      選擇最符合家長訊息的情境，有助於小幫手提供更精準的回覆建議。下拉式選單將提供多種情境選項，讓老師可以挑選到最合適的狀況，並連動小幫手產生回覆。
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -218,7 +218,7 @@ export function ReplyGeneratorForm() {
                       />
                     </FormControl>
                     <FormDescription>
-                      您提供的上下文越多，AI的建議就會越好。
+                      您提供的上下文越多，小幫手的建議就會越好。
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -267,7 +267,7 @@ export function ReplyGeneratorForm() {
               value={generatedReply}
               readOnly
               rows={8}
-              className="w-full bg-secondary text-secondary-foreground p-3 rounded-md shadow-inner text-sm leading-relaxed focus-visible:ring-accent border-border"
+              className="w-full bg-secondary/30 text-secondary-foreground p-3 rounded-md shadow-inner text-sm leading-relaxed focus-visible:ring-accent border-border"
             />
           </CardContent>
           <CardFooter className="flex justify-end">

@@ -5,8 +5,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: "教師AI助理",
-  description: '為親師溝通提供AI支援的回覆建議。',
+  title: "教師小幫手",
+  description: '為親師溝通提供小幫手支援的回覆建議。',
 };
 
 export default function RootLayout({

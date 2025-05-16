@@ -3,11 +3,11 @@
 'use server';
 
 /**
- * @fileOverview AI-powered reply generation for parent-teacher communication.
+ * @fileOverview 小幫手支援的回覆產生，用於親師溝通。
  *
- * - generateParentReply - A function that generates reply suggestions to parents' messages.
- * - GenerateParentReplyInput - The input type for the generateParentReply function.
- * - GenerateParentReplyOutput - The output type for the generateParentReply function.
+ * - generateParentReply - 一個產生家長訊息回覆建議的函式。
+ * - GenerateParentReplyInput - generateParentReply 函式的輸入型別。
+ * - GenerateParentReplyOutput - generateParentReply 函式的輸出型別。
  */
 
 import {ai} from '@/ai/genkit';

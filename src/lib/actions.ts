@@ -45,11 +45,11 @@ export async function handleGenerateReplyAction(
     if (result.reply) {
       return { reply: result.reply };
     } else {
-      return { error: "產生回覆失敗。AI未提供回應。" };
+      return { error: "產生回覆失敗。小幫手未提供回應。" };
     }
   } catch (e) {
-    console.error("AI reply generation failed:", e);
-    const errorMessage = e instanceof Error ? e.message : "AI回覆產生過程中發生未知錯誤。";
-    return { error: `AI 錯誤： ${errorMessage}` };
+    console.error("小幫手 reply generation failed:", e);
+    const errorMessage = e instanceof Error ? e.message : "小幫手回覆產生過程中發生未知錯誤。";
+    return { error: `小幫手錯誤： ${errorMessage}` };
   }
 }
