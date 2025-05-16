@@ -33,7 +33,7 @@ body {
     --destructive-foreground: 0 0% 98%;
 
     --border: 240 20% 85%; /* Lavender-grey border */
-    --input: 240 40% 97%; /* Very pale lavender input background */
+    --input: 250 40% 97%; /* Very pale lavender input background */
     --ring: 195 50% 70%; /* Gentle blue for focus ring */
 
     --chart-1: 12 76% 61%;
@@ -42,6 +42,9 @@ body {
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+
+    --warm-orange-red: 16 90% 50%;
+    --warm-orange-red-foreground: 0 0% 100%;
 
     /* Sidebar variables - kept as default, not used in this app */
     --sidebar-background: 0 0% 98%;
@@ -88,6 +91,9 @@ body {
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+
+    --warm-orange-red: 16 90% 55%;
+    --warm-orange-red-foreground: 0 0% 100%;
     
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;

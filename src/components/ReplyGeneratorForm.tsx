@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { useActionState } from "react";
-import { useFormStatus } from "react-dom"; 
+import { useFormStatus } from "react-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -76,7 +76,7 @@ function SubmitButton({ isPending }: SubmitButtonProps) {
     <Button 
       type="submit" 
       disabled={isPending} 
-      className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90"
+      className="w-full sm:w-auto bg-warm-orange-red text-warm-orange-red-foreground hover:bg-warm-orange-red/90"
     >
       {isPending ? (
         <>
