@@ -73,7 +73,11 @@ interface SubmitButtonProps {
 
 function SubmitButton({ isPending }: SubmitButtonProps) {
   return (
-    <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
+    <Button 
+      type="submit" 
+      disabled={isPending} 
+      className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90"
+    >
       {isPending ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
