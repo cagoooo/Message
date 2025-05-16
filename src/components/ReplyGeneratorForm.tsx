@@ -1,8 +1,9 @@
 // src/components/ReplyGeneratorForm.tsx
 "use client";
 
-import { useState, useEffect, useActionState, useTransition } from "react";
-import { useFormStatus } from "react-dom";
+import { useState, useEffect, useTransition } from "react";
+import { useActionState } from "react"; // Corrected: useActionState from react
+import { useFormStatus } from "react-dom"; // Correct: useFormStatus from react-dom
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -225,14 +226,14 @@ export function ReplyGeneratorForm() {
                 )}
               />
               <CardFooter className="flex justify-center p-0 pt-4">
-                <SubmitButton isPending={isTransitionPending} />
+                <SubmitButton isPending={isTransitionPending || isActionPendingOriginal} />
               </CardFooter>
             </form>
           </Form>
         </CardContent>
       </Card>
 
-      {isTransitionPending && !generatedReply && (
+      {(isTransitionPending || isActionPendingOriginal) && !generatedReply && (
          <Card className="mt-6 shadow-xl">
           <CardHeader>
             <CardTitle className="text-xl flex items-center">
@@ -249,7 +250,7 @@ export function ReplyGeneratorForm() {
         </Card>
       )}
 
-      {state?.error && !state.fieldErrors && !isTransitionPending && (
+      {state?.error && !state.fieldErrors && !(isTransitionPending || isActionPendingOriginal) && (
         <Alert variant="destructive" className="mt-6">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>錯誤</AlertTitle>
@@ -257,7 +258,7 @@ export function ReplyGeneratorForm() {
         </Alert>
       )}
 
-      {generatedReply && !isTransitionPending && (
+      {generatedReply && !(isTransitionPending || isActionPendingOriginal) && (
         <Card className="mt-6 shadow-xl">
           <CardHeader>
             <CardTitle className="text-xl">建議回覆</CardTitle>
@@ -267,7 +268,7 @@ export function ReplyGeneratorForm() {
               value={generatedReply}
               readOnly
               rows={8}
-              className="w-full bg-secondary/30 text-secondary-foreground p-3 rounded-md shadow-inner text-sm leading-relaxed focus-visible:ring-accent border-border"
+              className="w-full bg-muted text-foreground p-3 rounded-md text-sm leading-relaxed focus-visible:ring-accent border-border"
             />
           </CardContent>
           <CardFooter className="flex justify-end">
