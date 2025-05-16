@@ -89,7 +89,8 @@ function SubmitButton({ isPending }: SubmitButtonProps) {
 }
 
 export function ReplyGeneratorForm() {
-  const [state, formAction, isPending] = useActionState(handleGenerateReplyAction, initialState);
+  const [state, formAction, isActionPending] = useActionState(handleGenerateReplyAction, initialState);
+  const [isTransitionPending, startTransition] = useTransition();
   const { toast } = useToast();
   const [generatedReply, setGeneratedReply] = useState<string | undefined>(undefined);
 
@@ -169,7 +170,9 @@ export function ReplyGeneratorForm() {
                         formData.append("scenario", data.scenario);
                         formData.append("parentMessage", data.parentMessage);
                         setGeneratedReply(undefined); 
-                        formAction(formData);
+                        startTransition(() => {
+                          formAction(formData);
+                        });
                     }
                 )();
             }}>
@@ -222,14 +225,14 @@ export function ReplyGeneratorForm() {
                 )}
               />
               <CardFooter className="flex justify-center p-0 pt-4">
-                <SubmitButton isPending={isPending} />
+                <SubmitButton isPending={isTransitionPending} />
               </CardFooter>
             </form>
           </Form>
         </CardContent>
       </Card>
 
-      {isPending && !generatedReply && (
+      {isTransitionPending && !generatedReply && (
          <Card className="mt-6 shadow-xl">
           <CardHeader>
             <CardTitle className="text-xl flex items-center">
@@ -246,7 +249,7 @@ export function ReplyGeneratorForm() {
         </Card>
       )}
 
-      {state?.error && !state.fieldErrors && !isPending && (
+      {state?.error && !state.fieldErrors && !isTransitionPending && (
         <Alert variant="destructive" className="mt-6">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>錯誤</AlertTitle>
@@ -254,7 +257,7 @@ export function ReplyGeneratorForm() {
         </Alert>
       )}
 
-      {generatedReply && !isPending && (
+      {generatedReply && !isTransitionPending && (
         <Card className="mt-6 shadow-xl">
           <CardHeader>
             <CardTitle className="text-xl">建議回覆</CardTitle>
@@ -278,4 +281,3 @@ export function ReplyGeneratorForm() {
     </div>
   );
 }
-
