@@ -1,9 +1,10 @@
+
 // src/components/ReplyGeneratorForm.tsx
 "use client";
 
 import { useState, useEffect, useTransition, useRef } from "react";
 import { useFormStatus } from "react-dom";
-import { useActionState } from "react";
+import { useActionState } from "react"; // Corrected import
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -185,6 +186,7 @@ export function ReplyGeneratorForm() {
       toast({
         title: "回覆已產生！",
         description: "小幫手已建議一個回覆。",
+        variant: "success", // Use success variant for reply generation
       });
       setTimeout(() => {
         replyCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -213,6 +215,7 @@ export function ReplyGeneratorForm() {
           toast({
             title: "回覆已複製！",
             description: "建議的回覆已複製到您的剪貼簿 (API)。",
+            variant: "success",
           });
         }).catch(err => {
           console.warn("Clipboard API 複製失敗，嘗試備援方法: ", err);
@@ -231,6 +234,7 @@ export function ReplyGeneratorForm() {
               toast({
                 title: "回覆已複製！",
                 description: "建議的回覆已複製到您的剪貼簿 (備援)。",
+                variant: "success",
               });
             } else {
               throw new Error('備援複製指令失敗');
@@ -261,6 +265,7 @@ export function ReplyGeneratorForm() {
             toast({
               title: "回覆已複製！",
               description: "建議的回覆已複製到您的剪貼簿 (備援)。",
+              variant: "success",
             });
           } else {
             throw new Error('備援複製指令失敗');
