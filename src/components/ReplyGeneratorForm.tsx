@@ -1,8 +1,7 @@
-
 // src/components/ReplyGeneratorForm.tsx
 "use client";
 
-import { useState, useEffect, useTransition, useActionState as useActionStateReact, useRef } from "react";
+import { useState, useEffect, useTransition, useActionState, useRef } from "react";
 import { useFormStatus } from "react-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -39,6 +38,7 @@ import { BotMessageSquare, Sparkles, Copy, Loader2, AlertTriangle } from "lucide
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
   scenario: z.string({ required_error: "請選擇一個情境。" }).min(1, "必須填寫情境。"),
@@ -113,12 +113,12 @@ function SubmitButton({ isPending }: SubmitButtonProps) {
 }
 
 export function ReplyGeneratorForm() {
-  const [state, formAction, isActionPendingOriginal] = useActionStateReact(handleGenerateReplyAction, initialState);
+  const [state, formAction, isActionPendingOriginal] = useActionState(handleGenerateReplyAction, initialState);
   const [isTransitionPending, startTransition] = useTransition();
   const { toast } = useToast();
   const [generatedReply, setGeneratedReply] = useState<string | undefined>(undefined);
-  const [progress, setProgress] = useState(0); // State for progress bar
-  const replyCardRef = useRef<HTMLDivElement>(null); // Ref for scrolling
+  const [progress, setProgress] = useState(0);
+  const replyCardRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
@@ -133,11 +133,11 @@ export function ReplyGeneratorForm() {
     const isActive = isTransitionPending || isActionPendingOriginal;
 
     if (isActive && !generatedReply) {
-      setProgress(10); // Start with a bit of progress
+      setProgress(10); 
       let currentProgress = 10;
       timer = setInterval(() => {
         currentProgress += Math.floor(Math.random() * 10) + 5;
-        if (currentProgress >= 95) { // Go up to 95% while pending
+        if (currentProgress >= 95) {
           setProgress(95);
           clearInterval(timer);
         } else {
@@ -146,12 +146,12 @@ export function ReplyGeneratorForm() {
       }, 400);
     } else {
       clearInterval(timer);
-      if (generatedReply) { // When reply is received
+      if (generatedReply) {
         setProgress(100);
         setTimeout(() => {
-          setProgress(0); // Reset after a short delay
+          setProgress(0);
         }, 500); 
-      } else if (!isActive) { // If pending stops for other reasons (e.g. error, or initial load)
+      } else if (!isActive) {
         setProgress(0);
       }
     }
@@ -168,11 +168,9 @@ export function ReplyGeneratorForm() {
         title: "回覆已產生！",
         description: "小幫手已建議一個回覆。",
       });
-      // form.reset(); // Removed to keep form input values
-      // Scroll to reply section
       setTimeout(() => {
         replyCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100); // Delay to allow DOM update
+      }, 100);
     }
     if (state?.error && !state?.fieldErrors) {
       toast({
@@ -229,10 +227,11 @@ export function ReplyGeneratorForm() {
           }
         });
       } else {
+        // Fallback for browsers that don't support navigator.clipboard
         try {
           const textArea = document.createElement("textarea");
           textArea.value = generatedReply;
-          textArea.style.position = "fixed";
+          textArea.style.position = "fixed"; // Ensure it's not visible
           textArea.style.left = "-9999px";
           textArea.style.top = "-9999px";
           document.body.appendChild(textArea);
@@ -283,8 +282,8 @@ export function ReplyGeneratorForm() {
                         const formData = new FormData();
                         formData.append("scenario", data.scenario);
                         formData.append("parentMessage", data.parentMessage);
-                        setGeneratedReply(undefined); // Clear previous reply
-                        setProgress(0); // Reset progress
+                        setGeneratedReply(undefined); 
+                        setProgress(0); 
                         startTransition(() => {
                            formAction(formData);
                         });
@@ -308,7 +307,7 @@ export function ReplyGeneratorForm() {
                       <FormLabel className="inline-block px-3 py-1.5 text-sm font-semibold text-white bg-gradient-to-r from-sky-500 to-indigo-500 rounded-lg shadow-md border border-indigo-600/50">選擇情境</FormLabel>
                       <Select 
                         onValueChange={field.onChange} 
-                        value={field.value || undefined}
+                        value={field.value || undefined} // Ensure undefined for placeholder
                       >
                         <FormControl>
                           <SelectTrigger className={triggerStyleClasses}>
@@ -356,14 +355,14 @@ export function ReplyGeneratorForm() {
                   </FormItem>
                 )}
               />
-
+              
               {(isTransitionPending || isActionPendingOriginal) && !generatedReply && progress > 0 && (
-                <div>
+                <div className="mb-4"> {/* Ensure spacing for progress bar */}
                   <Progress value={progress} className="w-full" />
                 </div>
               )}
 
-              <CardFooter className="flex justify-center p-0 pt-6">
+              <CardFooter className="flex justify-center p-0 pt-2"> {/* Adjusted padding top */}
                 <SubmitButton isPending={isTransitionPending || isActionPendingOriginal} />
               </CardFooter>
             </form>
@@ -380,7 +379,6 @@ export function ReplyGeneratorForm() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
-            {/* Progress bar removed from here */}
             <Skeleton className="h-4 w-3/4 bg-muted/50" />
             <Skeleton className="h-4 w-full bg-muted/50" />
             <Skeleton className="h-4 w-full bg-muted/50" />
@@ -407,7 +405,12 @@ export function ReplyGeneratorForm() {
               value={generatedReply}
               readOnly
               rows={8}
-              className="w-full rounded-md shadow-sm p-3 bg-muted text-foreground border-border hover:border-primary/50 focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-300 ease-in-out leading-relaxed"
+              className={cn(
+                "w-full rounded-md shadow-sm p-3 bg-muted text-foreground border-border", 
+                "hover:border-primary/50 focus:ring-2 focus:ring-primary focus:border-primary",
+                "transition-all duration-300 ease-in-out leading-relaxed",
+                "generated-reply-textarea" // Added custom class for scrollbar styling
+              )}
             />
           </CardContent>
           <CardFooter className="flex justify-end">
@@ -424,4 +427,3 @@ export function ReplyGeneratorForm() {
     </div>
   );
 }
-

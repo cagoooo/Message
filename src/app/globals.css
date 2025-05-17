@@ -115,3 +115,32 @@ body {
     font-feature-settings: "rlig" 1,"calt" 1; /* Consistent font rendering */
   }
 }
+
+/* Custom scrollbar for generated reply textarea */
+@layer utilities {
+  .generated-reply-textarea::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .generated-reply-textarea::-webkit-scrollbar-track {
+    background: hsl(var(--muted) / 0.2); /* Softer track */
+    border-radius: 10px;
+  }
+  .generated-reply-textarea::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border)); 
+    border-radius: 10px;
+    border: 2px solid hsl(var(--muted)); /* Thumb border matching muted background for consistency */
+  }
+  .generated-reply-textarea::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--primary));
+  }
+
+  /* For Firefox - basic styling */
+  .generated-reply-textarea {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) hsl(var(--muted) / 0.2);
+  }
+  .dark .generated-reply-textarea {
+     scrollbar-color: hsl(var(--border)) hsl(var(--muted) / 0.2);
+  }
+}
