@@ -1,3 +1,4 @@
+
 // src/components/ReplyGeneratorForm.tsx
 "use client";
 
@@ -37,7 +38,7 @@ import { useToast } from "@/hooks/use-toast";
 import { BotMessageSquare, Sparkles, Copy, Loader2, AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress"; // Added Progress import
+import { Progress } from "@/components/ui/progress";
 
 const formSchema = z.object({
   scenario: z.string({ required_error: "請選擇一個情境。" }).min(1, "必須填寫情境。"),
@@ -167,7 +168,7 @@ export function ReplyGeneratorForm() {
         title: "回覆已產生！",
         description: "小幫手已建議一個回覆。",
       });
-      form.reset();
+      // form.reset(); // Removed to keep form input values
       // Scroll to reply section
       setTimeout(() => {
         replyCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -355,6 +356,13 @@ export function ReplyGeneratorForm() {
                   </FormItem>
                 )}
               />
+
+              {(isTransitionPending || isActionPendingOriginal) && !generatedReply && progress > 0 && (
+                <div>
+                  <Progress value={progress} className="w-full" />
+                </div>
+              )}
+
               <CardFooter className="flex justify-center p-0 pt-6">
                 <SubmitButton isPending={isTransitionPending || isActionPendingOriginal} />
               </CardFooter>
@@ -372,7 +380,7 @@ export function ReplyGeneratorForm() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
-            {progress > 0 && <Progress value={progress} className="w-full mb-4" />}
+            {/* Progress bar removed from here */}
             <Skeleton className="h-4 w-3/4 bg-muted/50" />
             <Skeleton className="h-4 w-full bg-muted/50" />
             <Skeleton className="h-4 w-full bg-muted/50" />
@@ -416,3 +424,4 @@ export function ReplyGeneratorForm() {
     </div>
   );
 }
+
