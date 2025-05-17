@@ -2,7 +2,8 @@
 "use client";
 
 import { useState, useEffect, useTransition, useRef } from "react";
-import { useFormStatus, useActionState } from "react"; // Corrected: useActionState from 'react'
+import { useFormStatus } from "react-dom";
+import { useActionState } from "react"; // Corrected: useActionState from 'react'
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -127,25 +128,18 @@ export function ReplyGeneratorForm() {
       scenario: "",
       parentMessage: "",
     },
-    // Reset form values if state.reply is present (meaning a successful generation)
-    // but only if we are not in a pending state.
-    // This ensures values are kept if there was an error or during generation.
-    ...(state?.reply && !isTransitionPending && !isActionPendingOriginal ? { values: { scenario: "", parentMessage: "" } } : {})
   });
-
-  // Effect to keep form values if generation was successful
-  // This might seem redundant with defaultValues logic, but ensures fields are not cleared
-  // if a user starts typing again immediately after a successful generation
-  // and before another submit.
+  
   useEffect(() => {
-    if (state?.reply && !isActionPendingOriginal && !isTransitionPending) {
-      // Do not clear form here, allow user to re-submit with same/modified values
-    } else if (!state?.reply && !state?.error && !state?.fieldErrors) {
-      // This case is for initial load or if form was cleared by other means
-      // and there's no active generation/error.
-      // form.reset({ scenario: "", parentMessage: "" }); // Optionally reset if needed elsewhere
+    if (state?.reply && !isTransitionPending && !isActionPendingOriginal) {
+      // Values are kept, form.reset is not called here
+    } else if (!state?.reply && !state?.error && !state?.fieldErrors && !isTransitionPending && !isActionPendingOriginal) {
+      // If there was no reply, no error, no field errors, and not pending,
+      // it implies a reset or initial state might be desired by some logic,
+      // but for keeping values, we do nothing here.
+      // Or, if an explicit reset is needed elsewhere, form.reset({ scenario: "", parentMessage: "" });
     }
-  }, [state, isActionPendingOriginal, isTransitionPending, form]);
+  }, [state, isTransitionPending, isActionPendingOriginal, form]);
 
 
   useEffect(() => {
@@ -169,7 +163,7 @@ export function ReplyGeneratorForm() {
       if (generatedReply) {
         setProgress(100);
         setTimeout(() => {
-          setProgress(0); // Reset progress after a short delay
+          setProgress(0); 
         }, 500);
       } else if (!isActive) {
         setProgress(0);
@@ -184,7 +178,6 @@ export function ReplyGeneratorForm() {
   useEffect(() => {
     if (state?.reply) {
       setGeneratedReply(state.reply);
-      // form.reset(); // Clear form on successful reply generation
       toast({
         title: "回覆已產生！",
         description: "小幫手已建議一個回覆。",
@@ -252,7 +245,7 @@ export function ReplyGeneratorForm() {
         try {
           const textArea = document.createElement("textarea");
           textArea.value = generatedReply;
-          textArea.style.position = "fixed"; // Ensure it's not visible
+          textArea.style.position = "fixed"; 
           textArea.style.left = "-9999px";
           textArea.style.top = "-9999px";
           document.body.appendChild(textArea);
@@ -284,7 +277,7 @@ export function ReplyGeneratorForm() {
 
   return (
     <div className="w-full max-w-2xl mx-auto">
-      <Card className="shadow-xl bg-gradient-to-br from-rose-50 via-purple-50 to-sky-50 dark:from-rose-900/50 dark:via-purple-900/50 dark:to-sky-900/50">
+      <Card className="shadow-xl bg-card">
         <CardHeader className="text-center bg-primary/5 p-6">
           <div className="flex items-center justify-center mb-2">
             <BotMessageSquare className="h-10 w-10 text-primary mr-3" />
@@ -306,7 +299,7 @@ export function ReplyGeneratorForm() {
                         formData.append("scenario", data.scenario);
                         formData.append("parentMessage", data.parentMessage);
                         setGeneratedReply(undefined);
-                        setProgress(0);
+                        setProgress(0); 
                         startTransition(() => {
                            formAction(formData);
                         });
@@ -324,7 +317,7 @@ export function ReplyGeneratorForm() {
                   if (selectedScenarioValue && selectedScenarioIndex !== -1) {
                     triggerStyleClasses = `w-full ${optionColors[selectedScenarioIndex % optionColors.length]} bg-gradient-to-r from-pink-100 via-purple-100 to-indigo-100 dark:from-pink-900/70 dark:via-purple-900/70 dark:to-indigo-900/70 font-medium`;
                   } else {
-                     triggerStyleClasses = "w-full bg-background"; // Default background if no value selected
+                     triggerStyleClasses = "w-full bg-background"; 
                   }
 
                   return (
@@ -335,9 +328,8 @@ export function ReplyGeneratorForm() {
                         onOpenChange={setIsScenarioSelectOpen}
                         onValueChange={(value) => {
                           field.onChange(value);
-                          // setIsScenarioSelectOpen(false); // Optional: close on select, Radix usually handles this
                         }}
-                        value={field.value || undefined} // Ensure undefined for placeholder
+                        value={field.value || undefined} 
                       >
                         <FormControl>
                           <SelectTrigger className={triggerStyleClasses}>
@@ -375,7 +367,7 @@ export function ReplyGeneratorForm() {
                         placeholder="在此貼上家長的訊息，或簡要描述情況..."
                         rows={6}
                         {...field}
-                        className="mt-1 block w-full rounded-md shadow-sm p-3 bg-gradient-to-br from-rose-100 via-fuchsia-100 to-indigo-100 dark:from-rose-900 dark:via-fuchsia-900 dark:to-indigo-900 focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 hover:shadow-lg dark:hover:shadow-fuchsia-700/50 transition-all duration-300 ease-in-out placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100"
+                        className="mt-1 block w-full rounded-md shadow-sm p-3 bg-input text-foreground focus:ring-2 focus:ring-accent focus:border-accent hover:shadow-lg transition-all duration-300 ease-in-out placeholder-muted-foreground"
                       />
                     </FormControl>
                     <FormDescription>
@@ -385,11 +377,11 @@ export function ReplyGeneratorForm() {
                   </FormItem>
                 )}
               />
-              <div className="space-y-2"> {/* Wrapper for progress bar and button */}
+              <div className="space-y-2"> 
                 {isCurrentlyPending && !generatedReply && progress > 0 && (
                     <Progress value={progress} className="w-full h-3" />
                 )}
-                <CardFooter className="flex justify-center p-0 pt-2"> {/* Ensure button is below progress bar */}
+                <CardFooter className="flex justify-center p-0 pt-2">
                     <SubmitButton isPending={isCurrentlyPending} />
                 </CardFooter>
               </div>
@@ -399,7 +391,7 @@ export function ReplyGeneratorForm() {
       </Card>
 
       {isCurrentlyPending && !generatedReply && (
-         <Card className="mt-6 shadow-xl bg-gradient-to-br from-rose-50 via-purple-50 to-sky-50 dark:from-rose-900/50 dark:via-purple-900/50 dark:to-sky-900/50">
+         <Card className="mt-6 shadow-xl bg-card">
           <CardHeader>
             <CardTitle className="text-xl flex items-center text-foreground">
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -424,7 +416,7 @@ export function ReplyGeneratorForm() {
       )}
 
       {generatedReply && !isCurrentlyPending && (
-        <Card ref={replyCardRef} className="mt-6 shadow-xl bg-gradient-to-br from-rose-50 via-purple-50 to-sky-50 dark:from-rose-900/50 dark:via-purple-900/50 dark:to-sky-900/50">
+        <Card ref={replyCardRef} className="mt-6 shadow-xl bg-card">
           <CardHeader>
             <CardTitle className="text-xl text-foreground">建議回覆</CardTitle>
           </CardHeader>
@@ -437,7 +429,7 @@ export function ReplyGeneratorForm() {
                 "w-full rounded-md shadow-sm p-3 bg-muted text-foreground border-border",
                 "hover:border-primary/50 focus:ring-2 focus:ring-primary focus:border-primary",
                 "transition-all duration-300 ease-in-out leading-relaxed",
-                "generated-reply-textarea" // Custom class for scrollbar styling
+                "generated-reply-textarea" 
               )}
             />
           </CardContent>
@@ -455,4 +447,3 @@ export function ReplyGeneratorForm() {
     </div>
   );
 }
-
