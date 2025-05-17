@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useTransition, useRef } from "react";
 import { useFormStatus } from "react-dom";
-import { useActionState } from 'react';
+import { useActionState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -143,7 +143,7 @@ export function ReplyGeneratorForm() {
       // it implies a reset or initial state might be desired by some logic,
       // but for keeping values, we do nothing here.
     }
-  }, [state, isTransitionPending, isActionPendingOriginal]);
+  }, [state, isTransitionPending, isActionPendingOriginal, form]);
 
 
   useEffect(() => {
@@ -421,8 +421,10 @@ export function ReplyGeneratorForm() {
 
       {generatedReply && !isCurrentlyPending && (
         <Card ref={replyCardRef} className="mt-6 shadow-xl bg-card">
-          <CardHeader>
-            <CardTitle className="text-xl text-foreground">建議回覆</CardTitle>
+          <CardHeader className="text-center p-4 rounded-t-lg bg-gradient-to-br from-primary/20 via-accent/15 to-secondary/20 border-b border-border shadow-sm">
+            <CardTitle className="text-2xl font-bold text-primary tracking-tight">
+              建議回覆
+            </CardTitle>
           </CardHeader>
           <CardContent>
              <div
@@ -458,3 +460,4 @@ export function ReplyGeneratorForm() {
     </div>
   );
 }
+
