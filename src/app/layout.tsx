@@ -4,7 +4,7 @@ import { GeistMono } from 'geist/font/mono';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
-const siteTitle = "親師溝通小幫手";
+const siteTitle = "教師小幫手";
 const siteDescription = '為親師溝通提供小幫手支援的回覆建議。';
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://your-website-url.com"; // Fallback URL
 const siteImage = `${siteUrl}/placeholder-social-image.jpg`; // Placeholder image path
@@ -62,9 +62,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-Hant" className={`${GeistSans.variable} ${GeistMono.variable}`}>
-      <body className={`font-sans antialiased`}>
+      <body className={`flex flex-col min-h-screen font-sans antialiased bg-background`}>
         {children}
         <Toaster />
+        <footer className="py-8 text-center text-muted-foreground text-xs">
+          <p>
+            © 2025 桃園市石門國小資訊組{' '}
+            <a
+              href="https://www.smes.tyc.edu.tw/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-primary hover:underline"
+            >
+              阿凱老師 設計
+            </a>
+          </p>
+        </footer>
       </body>
     </html>
   );
