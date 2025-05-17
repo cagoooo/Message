@@ -82,18 +82,7 @@ const SelectContent = React.forwardRef<
         className
       )}
       position={position}
-      onPointerDownOutside={(event) => {
-        // For touch events, do not call event.preventDefault().
-        // This allows the browser's default behavior (like scrolling) to proceed.
-        // The Select component should still close due to blur or other Radix mechanisms.
-        if (event.pointerType === 'touch') {
-          return;
-        }
-        // For non-touch events (e.g., mouse clicks outside),
-        // call event.preventDefault() to ensure the select closes and focus returns
-        // to the trigger, which is part of Radix's typical dismissable layer behavior.
-        event.preventDefault();
-      }}
+      // Removed custom onPointerDownOutside handler to restore default Radix behavior
       {...props}
     >
       <SelectScrollUpButton />
@@ -171,3 +160,4 @@ export {
   SelectScrollUpButton,
   SelectScrollDownButton,
 }
+
