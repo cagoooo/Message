@@ -65,14 +65,14 @@ export default function RootLayout({
       <body className={`flex flex-col min-h-screen font-sans antialiased bg-background`}>
         {children}
         <Toaster />
-        <footer className="py-8 text-center text-muted-foreground text-xs">
+        <footer className="border-t border-border/50 bg-gradient-to-b from-background to-secondary/20 dark:from-background dark:to-secondary/30 py-8 text-center text-sm font-semibold text-muted-foreground">
           <p>
             © 2025 桃園市石門國小資訊組{' '}
             <a
               href="https://www.smes.tyc.edu.tw/"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-primary hover:underline"
+              className="font-bold text-primary hover:text-accent hover:underline transition-colors duration-300 ease-in-out"
             >
               阿凱老師 設計
             </a>
