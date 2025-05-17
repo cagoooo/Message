@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useTransition, useRef } from "react";
 import { useFormStatus } from "react-dom";
-import { useActionState } from "react"; // Corrected import
+import { useActionState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -186,7 +186,7 @@ export function ReplyGeneratorForm() {
       toast({
         title: "回覆已產生！",
         description: "小幫手已建議一個回覆。",
-        variant: "success", // Use success variant for reply generation
+        variant: "success", 
       });
       setTimeout(() => {
         replyCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -290,9 +290,9 @@ export function ReplyGeneratorForm() {
         <CardHeader className="text-center bg-primary/5 p-6">
           <div className="flex items-center justify-center mb-2">
             <BotMessageSquare className="h-10 w-10 text-primary mr-3" />
-            <CardTitle className="text-4xl font-bold tracking-tight text-primary">教師回應訊息建議小幫手</CardTitle>
+            <CardTitle className="text-3xl md:text-4xl font-bold tracking-tight text-primary">教師回應訊息建議小幫手</CardTitle>
           </div>
-          <CardDescription className="text-lg text-muted-foreground/90 mt-1">
+          <CardDescription className="text-base md:text-lg text-muted-foreground/90 mt-1">
             為家長訊息獲取小幫手支援的同理心與專業回覆建議。
           </CardDescription>
         </CardHeader>

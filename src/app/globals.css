@@ -154,9 +154,9 @@ body {
   .generated-reply-textarea h6 {
     @apply font-semibold mt-4 mb-2;
   }
-  .generated-reply-textarea h1 { @apply text-2xl; }
-  .generated-reply-textarea h2 { @apply text-xl; }
-  .generated-reply-textarea h3 { @apply text-lg; }
+  .generated-reply-textarea h1 { @apply text-xl md:text-2xl; }
+  .generated-reply-textarea h2 { @apply text-lg md:text-xl; }
+  .generated-reply-textarea h3 { @apply text-base md:text-lg; }
   
   .generated-reply-textarea p {
     @apply mb-3; /* Slightly more space after paragraphs */
