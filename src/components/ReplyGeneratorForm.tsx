@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useTransition, useRef } from "react";
 import { useFormStatus } from "react-dom";
-import { useActionState } from "react"; // Corrected: useActionState from 'react'
+import { useActionState } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -40,6 +40,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from 'react-markdown';
 
 const formSchema = z.object({
   scenario: z.string({ required_error: "請選擇一個情境。" }).min(1, "必須填寫情境。"),
@@ -78,7 +79,11 @@ const optionColors = [
   "text-emerald-500",
 ];
 
-const initialState = {
+const initialState: {
+  reply?: string;
+  error?: string;
+  fieldErrors?: { scenario?: string[]; parentMessage?: string[] };
+} = {
   reply: undefined,
   error: undefined,
   fieldErrors: undefined,
@@ -137,9 +142,8 @@ export function ReplyGeneratorForm() {
       // If there was no reply, no error, no field errors, and not pending,
       // it implies a reset or initial state might be desired by some logic,
       // but for keeping values, we do nothing here.
-      // Or, if an explicit reset is needed elsewhere, form.reset({ scenario: "", parentMessage: "" });
     }
-  }, [state, isTransitionPending, isActionPendingOriginal, form]);
+  }, [state, isTransitionPending, isActionPendingOriginal]);
 
 
   useEffect(() => {
@@ -421,17 +425,24 @@ export function ReplyGeneratorForm() {
             <CardTitle className="text-xl text-foreground">建議回覆</CardTitle>
           </CardHeader>
           <CardContent>
-            <Textarea
-              value={generatedReply}
-              readOnly
-              rows={8}
+             <div
               className={cn(
-                "w-full rounded-md shadow-sm p-3 bg-muted text-foreground border-border",
-                "hover:border-primary/50 focus:ring-2 focus:ring-primary focus:border-primary",
+                "w-full rounded-md shadow-sm p-3 border text-sm",
+                "bg-gradient-to-br from-primary/5 via-background to-accent/5 dark:from-primary/20 dark:via-black/10 dark:to-accent/20",
+                "text-foreground border-border",
                 "transition-all duration-300 ease-in-out leading-relaxed",
-                "generated-reply-textarea" 
+                "generated-reply-textarea min-h-[160px]" 
               )}
-            />
+            >
+              <ReactMarkdown
+                components={{
+                  // Optional: Add custom renderers here if needed
+                  // e.g., p: ({node, ...props}) => <p className="my-2" {...props} />
+                }}
+              >
+                {generatedReply}
+              </ReactMarkdown>
+            </div>
           </CardContent>
           <CardFooter className="flex justify-end">
             <Button

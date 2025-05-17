@@ -116,7 +116,7 @@ body {
   }
 }
 
-/* Custom scrollbar for generated reply textarea */
+/* Custom scrollbar and Markdown styling for generated reply area */
 @layer utilities {
   .generated-reply-textarea::-webkit-scrollbar {
     width: 8px;
@@ -129,7 +129,7 @@ body {
   .generated-reply-textarea::-webkit-scrollbar-thumb {
     background-color: hsl(var(--border)); 
     border-radius: 10px;
-    border: 2px solid hsl(var(--muted)); /* Thumb border matching muted background for consistency */
+    border: 2px solid hsl(var(--muted) / 0.1);
   }
   .generated-reply-textarea::-webkit-scrollbar-thumb:hover {
     background-color: hsl(var(--primary));
@@ -139,8 +139,67 @@ body {
   .generated-reply-textarea {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--border)) hsl(var(--muted) / 0.2);
+    overflow-y: auto; /* Ensure scrollbar appears when content exceeds height */
   }
   .dark .generated-reply-textarea {
      scrollbar-color: hsl(var(--border)) hsl(var(--muted) / 0.2);
+  }
+
+  /* Markdown specific styling */
+  .generated-reply-textarea h1,
+  .generated-reply-textarea h2,
+  .generated-reply-textarea h3,
+  .generated-reply-textarea h4,
+  .generated-reply-textarea h5,
+  .generated-reply-textarea h6 {
+    @apply font-semibold mt-4 mb-2;
+  }
+  .generated-reply-textarea h1 { @apply text-2xl; }
+  .generated-reply-textarea h2 { @apply text-xl; }
+  .generated-reply-textarea h3 { @apply text-lg; }
+  
+  .generated-reply-textarea p {
+    @apply mb-3; /* Slightly more space after paragraphs */
+  }
+  .generated-reply-textarea a {
+    @apply text-primary underline hover:text-primary/80;
+  }
+  .generated-reply-textarea ul,
+  .generated-reply-textarea ol {
+    @apply ml-5 mb-3;
+  }
+  .generated-reply-textarea ul {
+    @apply list-disc;
+  }
+  .generated-reply-textarea ol {
+    @apply list-decimal;
+  }
+  .generated-reply-textarea li {
+    @apply mb-1;
+  }
+  .generated-reply-textarea blockquote {
+    @apply border-l-4 border-border pl-4 italic my-3 text-muted-foreground;
+  }
+  .generated-reply-textarea code {
+    @apply bg-muted/80 text-muted-foreground px-1.5 py-0.5 rounded text-sm font-mono;
+  }
+  .generated-reply-textarea pre {
+    @apply bg-muted/80 text-muted-foreground p-3 my-3 rounded overflow-x-auto text-sm font-mono;
+  }
+  .generated-reply-textarea pre code {
+    @apply bg-transparent p-0; /* Reset code style inside pre */
+  }
+  .generated-reply-textarea hr {
+    @apply border-border my-4;
+  }
+  .generated-reply-textarea table {
+    @apply w-full my-3 border-collapse border border-border;
+  }
+  .generated-reply-textarea th,
+  .generated-reply-textarea td {
+    @apply border border-border px-3 py-1.5 text-left;
+  }
+  .generated-reply-textarea th {
+    @apply bg-muted/50 font-semibold;
   }
 }

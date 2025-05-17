@@ -1,4 +1,3 @@
-
 // src/ai/flows/generate-parent-reply.ts
 'use server';
 
@@ -21,7 +20,7 @@ const GenerateParentReplyInputSchema = z.object({
 export type GenerateParentReplyInput = z.infer<typeof GenerateParentReplyInputSchema>;
 
 const GenerateParentReplyOutputSchema = z.object({
-  reply: z.string().describe('The AI-generated reply to the parent.'),
+  reply: z.string().describe('The AI-generated reply to the parent, potentially using Markdown for formatting.'),
 });
 
 export type GenerateParentReplyOutput = z.infer<typeof GenerateParentReplyOutputSchema>;
@@ -37,6 +36,7 @@ const generateParentReplyPrompt = ai.definePrompt({
   prompt: `你是一位樂於助人且富有同理心的教師助理。你的任務是針對家長的訊息，產生專業且易於理解的回覆。
 請使用繁體中文（台灣慣用詞彙與表達方式）來撰寫回覆。
 請考量提供的情境，以便適當地調整回覆內容。
+你可以使用 Markdown 格式來組織你的回覆，例如使用標題、列表、粗體、斜體等，使其更清晰易讀。
 
 家長的訊息: {{{parentMessage}}}
 
