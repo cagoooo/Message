@@ -430,7 +430,7 @@ export function ReplyGeneratorForm() {
              <div
               className={cn(
                 "w-full rounded-md shadow-sm p-3 border text-sm",
-                "bg-gradient-to-br from-primary/5 via-background to-accent/5 dark:from-primary/20 dark:via-black/10 dark:to-accent/20",
+                "bg-gradient-to-br from-primary/15 via-background to-accent/15 dark:from-primary/30 dark:via-background/20 dark:to-accent/30",
                 "text-foreground border-border",
                 "transition-all duration-300 ease-in-out leading-relaxed",
                 "generated-reply-textarea min-h-[160px]" 
