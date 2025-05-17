@@ -1,8 +1,8 @@
 // src/components/ReplyGeneratorForm.tsx
 "use client";
 
-import { useState, useEffect, useTransition, useActionState, useRef } from "react";
-import { useFormStatus } from "react-dom";
+import { useState, useEffect, useTransition, useRef } from "react";
+import { useFormStatus, useActionState } from "react"; // Corrected: useActionState from 'react'
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -92,9 +92,9 @@ function SubmitButton({ isPending }: SubmitButtonProps) {
     <Button
       type="submit"
       disabled={isPending}
-      className={`w-full sm:w-auto bg-warm-orange-red text-warm-orange-red-foreground hover:bg-warm-orange-red/90 
-                 transform transition-transform duration-300 ease-in-out 
-                 hover:scale-110 active:scale-105 
+      className={`w-full sm:w-auto bg-warm-orange-red text-warm-orange-red-foreground hover:bg-warm-orange-red/90
+                 transform transition-transform duration-300 ease-in-out
+                 hover:scale-110 active:scale-105
                  focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-warm-orange-red/80`}
     >
       {isPending ? (
@@ -119,6 +119,7 @@ export function ReplyGeneratorForm() {
   const [generatedReply, setGeneratedReply] = useState<string | undefined>(undefined);
   const [progress, setProgress] = useState(0);
   const replyCardRef = useRef<HTMLDivElement>(null);
+  const [isScenarioSelectOpen, setIsScenarioSelectOpen] = useState(false);
 
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
@@ -126,14 +127,33 @@ export function ReplyGeneratorForm() {
       scenario: "",
       parentMessage: "",
     },
+    // Reset form values if state.reply is present (meaning a successful generation)
+    // but only if we are not in a pending state.
+    // This ensures values are kept if there was an error or during generation.
+    ...(state?.reply && !isTransitionPending && !isActionPendingOriginal ? { values: { scenario: "", parentMessage: "" } } : {})
   });
+
+  // Effect to keep form values if generation was successful
+  // This might seem redundant with defaultValues logic, but ensures fields are not cleared
+  // if a user starts typing again immediately after a successful generation
+  // and before another submit.
+  useEffect(() => {
+    if (state?.reply && !isActionPendingOriginal && !isTransitionPending) {
+      // Do not clear form here, allow user to re-submit with same/modified values
+    } else if (!state?.reply && !state?.error && !state?.fieldErrors) {
+      // This case is for initial load or if form was cleared by other means
+      // and there's no active generation/error.
+      // form.reset({ scenario: "", parentMessage: "" }); // Optionally reset if needed elsewhere
+    }
+  }, [state, isActionPendingOriginal, isTransitionPending, form]);
+
 
   useEffect(() => {
     let timer: NodeJS.Timeout | undefined;
     const isActive = isTransitionPending || isActionPendingOriginal;
 
     if (isActive && !generatedReply) {
-      setProgress(10); 
+      setProgress(10);
       let currentProgress = 10;
       timer = setInterval(() => {
         currentProgress += Math.floor(Math.random() * 10) + 5;
@@ -149,8 +169,8 @@ export function ReplyGeneratorForm() {
       if (generatedReply) {
         setProgress(100);
         setTimeout(() => {
-          setProgress(0);
-        }, 500); 
+          setProgress(0); // Reset progress after a short delay
+        }, 500);
       } else if (!isActive) {
         setProgress(0);
       }
@@ -164,6 +184,7 @@ export function ReplyGeneratorForm() {
   useEffect(() => {
     if (state?.reply) {
       setGeneratedReply(state.reply);
+      // form.reset(); // Clear form on successful reply generation
       toast({
         title: "回覆已產生！",
         description: "小幫手已建議一個回覆。",
@@ -259,6 +280,8 @@ export function ReplyGeneratorForm() {
     }
   };
 
+  const isCurrentlyPending = isTransitionPending || isActionPendingOriginal;
+
   return (
     <div className="w-full max-w-2xl mx-auto">
       <Card className="shadow-xl bg-gradient-to-br from-rose-50 via-purple-50 to-sky-50 dark:from-rose-900/50 dark:via-purple-900/50 dark:to-sky-900/50">
@@ -282,8 +305,8 @@ export function ReplyGeneratorForm() {
                         const formData = new FormData();
                         formData.append("scenario", data.scenario);
                         formData.append("parentMessage", data.parentMessage);
-                        setGeneratedReply(undefined); 
-                        setProgress(0); 
+                        setGeneratedReply(undefined);
+                        setProgress(0);
                         startTransition(() => {
                            formAction(formData);
                         });
@@ -296,17 +319,24 @@ export function ReplyGeneratorForm() {
                 render={({ field }) => {
                   const selectedScenarioValue = field.value;
                   const selectedScenarioIndex = scenarios.findIndex(s => s.value === selectedScenarioValue);
-                  
+
                   let triggerStyleClasses = "w-full";
-                  if (selectedScenarioIndex !== -1) {
+                  if (selectedScenarioValue && selectedScenarioIndex !== -1) {
                     triggerStyleClasses = `w-full ${optionColors[selectedScenarioIndex % optionColors.length]} bg-gradient-to-r from-pink-100 via-purple-100 to-indigo-100 dark:from-pink-900/70 dark:via-purple-900/70 dark:to-indigo-900/70 font-medium`;
+                  } else {
+                     triggerStyleClasses = "w-full bg-background"; // Default background if no value selected
                   }
 
                   return (
                     <FormItem>
                       <FormLabel className="inline-block px-3 py-1.5 text-sm font-semibold text-white bg-gradient-to-r from-sky-500 to-indigo-500 rounded-lg shadow-md border border-indigo-600/50">選擇情境</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
+                      <Select
+                        open={isScenarioSelectOpen}
+                        onOpenChange={setIsScenarioSelectOpen}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          // setIsScenarioSelectOpen(false); // Optional: close on select, Radix usually handles this
+                        }}
                         value={field.value || undefined} // Ensure undefined for placeholder
                       >
                         <FormControl>
@@ -316,9 +346,9 @@ export function ReplyGeneratorForm() {
                         </FormControl>
                         <SelectContent className="bg-gradient-to-r from-pink-300 via-purple-300 to-indigo-400">
                           {scenarios.map((s, index) => (
-                            <SelectItem 
-                              key={s.value} 
-                              value={s.value} 
+                            <SelectItem
+                              key={s.value}
+                              value={s.value}
                               className={`${optionColors[index % optionColors.length]} p-2 rounded-md my-0.5 mx-1 bg-white/80 dark:bg-neutral-800/80 hover:bg-white/95 dark:hover:bg-neutral-900/90 font-medium`}>
                               {s.label}
                             </SelectItem>
@@ -355,22 +385,20 @@ export function ReplyGeneratorForm() {
                   </FormItem>
                 )}
               />
-              
-              {(isTransitionPending || isActionPendingOriginal) && !generatedReply && progress > 0 && (
-                <div className="mb-4"> {/* Ensure spacing for progress bar */}
-                  <Progress value={progress} className="w-full" />
-                </div>
-              )}
-
-              <CardFooter className="flex justify-center p-0 pt-2"> {/* Adjusted padding top */}
-                <SubmitButton isPending={isTransitionPending || isActionPendingOriginal} />
-              </CardFooter>
+              <div className="space-y-2"> {/* Wrapper for progress bar and button */}
+                {isCurrentlyPending && !generatedReply && progress > 0 && (
+                    <Progress value={progress} className="w-full h-3" />
+                )}
+                <CardFooter className="flex justify-center p-0 pt-2"> {/* Ensure button is below progress bar */}
+                    <SubmitButton isPending={isCurrentlyPending} />
+                </CardFooter>
+              </div>
             </form>
           </Form>
         </CardContent>
       </Card>
 
-      {(isTransitionPending || isActionPendingOriginal) && !generatedReply && (
+      {isCurrentlyPending && !generatedReply && (
          <Card className="mt-6 shadow-xl bg-gradient-to-br from-rose-50 via-purple-50 to-sky-50 dark:from-rose-900/50 dark:via-purple-900/50 dark:to-sky-900/50">
           <CardHeader>
             <CardTitle className="text-xl flex items-center text-foreground">
@@ -387,7 +415,7 @@ export function ReplyGeneratorForm() {
         </Card>
       )}
 
-      {state?.error && !state.fieldErrors && !(isTransitionPending || isActionPendingOriginal) && (
+      {state?.error && !state.fieldErrors && !isCurrentlyPending && (
         <Alert variant="destructive" className="mt-6">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>錯誤</AlertTitle>
@@ -395,7 +423,7 @@ export function ReplyGeneratorForm() {
         </Alert>
       )}
 
-      {generatedReply && !(isTransitionPending || isActionPendingOriginal) && (
+      {generatedReply && !isCurrentlyPending && (
         <Card ref={replyCardRef} className="mt-6 shadow-xl bg-gradient-to-br from-rose-50 via-purple-50 to-sky-50 dark:from-rose-900/50 dark:via-purple-900/50 dark:to-sky-900/50">
           <CardHeader>
             <CardTitle className="text-xl text-foreground">建議回覆</CardTitle>
@@ -406,16 +434,16 @@ export function ReplyGeneratorForm() {
               readOnly
               rows={8}
               className={cn(
-                "w-full rounded-md shadow-sm p-3 bg-muted text-foreground border-border", 
+                "w-full rounded-md shadow-sm p-3 bg-muted text-foreground border-border",
                 "hover:border-primary/50 focus:ring-2 focus:ring-primary focus:border-primary",
                 "transition-all duration-300 ease-in-out leading-relaxed",
-                "generated-reply-textarea" // Added custom class for scrollbar styling
+                "generated-reply-textarea" // Custom class for scrollbar styling
               )}
             />
           </CardContent>
           <CardFooter className="flex justify-end">
-            <Button 
-              onClick={handleCopyReply} 
+            <Button
+              onClick={handleCopyReply}
               variant="default"
               className={`transform transition-transform duration-300 ease-in-out hover:scale-110 active:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/80`}>
               <Copy className="mr-2 h-4 w-4" />
@@ -427,3 +455,4 @@ export function ReplyGeneratorForm() {
     </div>
   );
 }
+
