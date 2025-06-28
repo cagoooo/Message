@@ -44,6 +44,10 @@ export default {
           DEFAULT: 'hsl(var(--warm-orange-red))',
           foreground: 'hsl(var(--warm-orange-red-foreground))'
         },
+        'special-button-gold': {
+          DEFAULT: 'hsl(var(--special-button-gold))',
+          foreground: 'hsl(var(--special-button-gold-foreground))'
+        },
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',

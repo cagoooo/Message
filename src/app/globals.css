@@ -46,6 +46,9 @@ body {
     --warm-orange-red: 16 90% 50%;
     --warm-orange-red-foreground: 0 0% 100%;
 
+    --special-button-gold: 45 90% 55%;
+    --special-button-gold-foreground: 240 10% 15%;
+
     /* Sidebar variables - kept as default, not used in this app */
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -94,6 +97,9 @@ body {
 
     --warm-orange-red: 16 90% 55%;
     --warm-orange-red-foreground: 0 0% 100%;
+    
+    --special-button-gold: 45 80% 60%;
+    --special-button-gold-foreground: 45 90% 10%;
     
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
