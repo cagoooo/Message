@@ -2,11 +2,13 @@
 // src/components/ReplyGeneratorForm.tsx
 "use client";
 
-import { useState, useEffect, useTransition, useRef } from "react";
+import { useState, useEffect, useTransition, useRef, useCallback } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { generateReply, type ActionResult } from "@/lib/actions";
+import { useHistory, type HistoryEntry } from "@/hooks/use-history";
+import { HistoryPanel } from "@/components/HistoryPanel";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -116,6 +118,15 @@ export function ReplyGeneratorForm() {
   const replyCardRef = useRef<HTMLDivElement>(null);
   const [isScenarioSelectOpen, setIsScenarioSelectOpen] = useState(false);
 
+  const {
+    items: historyItems,
+    hydrated: historyHydrated,
+    add: addHistory,
+    remove: removeHistory,
+    clear: clearHistory,
+    max: historyMax,
+  } = useHistory();
+
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -123,6 +134,77 @@ export function ReplyGeneratorForm() {
       parentMessage: "",
     },
   });
+
+  // 共用的剪貼簿邏輯：先試 Clipboard API → fallback 到 execCommand
+  const copyTextToClipboard = useCallback(
+    async (text: string, label: string = "回覆") => {
+      if (!text) return;
+      let ok = false;
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(text);
+          ok = true;
+        } catch (err) {
+          console.warn("Clipboard API failed, fallback:", err);
+        }
+      }
+      if (!ok) {
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          ta.style.top = "-9999px";
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+        } catch (err) {
+          console.error("Fallback copy failed:", err);
+        }
+      }
+      if (ok) {
+        toast({
+          title: `${label}已複製！`,
+          description: "已複製到您的剪貼簿。",
+          variant: "success",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "複製失敗",
+          description: "抱歉，無法自動複製。請手動選取複製。",
+        });
+      }
+    },
+    [toast],
+  );
+
+  // 套用歷史紀錄到表單
+  const handleApplyHistory = useCallback(
+    (entry: HistoryEntry) => {
+      form.reset({
+        scenario: entry.scenario,
+        parentMessage: entry.parentMessage,
+      });
+      setGeneratedReply(entry.reply);
+      setProgress(0);
+      setState({});
+      toast({
+        title: "已套回表單",
+        description: `已載入「${entry.scenarioLabel}」這份紀錄。`,
+        variant: "success",
+      });
+      setTimeout(() => {
+        replyCardRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
+    },
+    [form, toast],
+  );
 
   useEffect(() => {
     let timer: NodeJS.Timeout | undefined;
@@ -160,10 +242,23 @@ export function ReplyGeneratorForm() {
   useEffect(() => {
     if (state?.reply) {
       setGeneratedReply(state.reply);
+      // 自動加入歷史紀錄
+      const formData = form.getValues();
+      if (formData.scenario && formData.parentMessage) {
+        const label =
+          scenarios.find((s) => s.value === formData.scenario)?.label ??
+          formData.scenario;
+        addHistory({
+          scenario: formData.scenario,
+          scenarioLabel: label,
+          parentMessage: formData.parentMessage,
+          reply: state.reply,
+        });
+      }
       toast({
         title: "回覆已產生！",
-        description: "小幫手已建議一個回覆。",
-        variant: "success", 
+        description: "小幫手已建議一個回覆，並自動存入歷史紀錄。",
+        variant: "success",
       });
       setTimeout(() => {
         replyCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -182,89 +277,32 @@ export function ReplyGeneratorForm() {
     if (state?.fieldErrors?.parentMessage) {
       form.setError("parentMessage", { type: "server", message: state.fieldErrors.parentMessage[0] });
     }
-  }, [state, toast, form]);
+  }, [state, toast, form, addHistory]);
 
 
-  const handleCopyReply = () => {
-    if (generatedReply) {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(generatedReply).then(() => {
-          toast({
-            title: "回覆已複製！",
-            description: "建議的回覆已複製到您的剪貼簿 (API)。",
-            variant: "success",
-          });
-        }).catch(err => {
-          console.warn("Clipboard API 複製失敗，嘗試備援方法: ", err);
-          try {
-            const textArea = document.createElement("textarea");
-            textArea.value = generatedReply;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-9999px";
-            textArea.style.top = "-9999px";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            const successful = document.execCommand('copy');
-            document.body.removeChild(textArea);
-            if (successful) {
-              toast({
-                title: "回覆已複製！",
-                description: "建議的回覆已複製到您的剪貼簿 (備援)。",
-                variant: "success",
-              });
-            } else {
-              throw new Error('備援複製指令失敗');
-            }
-          } catch (fallbackErr) {
-            console.error("備援複製方法也失敗了: ", fallbackErr);
-            toast({
-              variant: "destructive",
-              title: "複製失敗",
-              description: "抱歉，無法自動複製回覆到剪貼簿。請手動複製。",
-            });
-          }
-        });
-      } else {
-        // Fallback for browsers that don't support navigator.clipboard
-        try {
-          const textArea = document.createElement("textarea");
-          textArea.value = generatedReply;
-          textArea.style.position = "fixed"; 
-          textArea.style.left = "-9999px";
-          textArea.style.top = "-9999px";
-          document.body.appendChild(textArea);
-          textArea.focus();
-          textArea.select();
-          const successful = document.execCommand('copy');
-          document.body.removeChild(textArea);
-          if (successful) {
-            toast({
-              title: "回覆已複製！",
-              description: "建議的回覆已複製到您的剪貼簿 (備援)。",
-              variant: "success",
-            });
-          } else {
-            throw new Error('備援複製指令失敗');
-          }
-        } catch (fallbackErr) {
-          console.error("備援複製方法失敗: ", fallbackErr);
-          toast({
-            variant: "destructive",
-            title: "複製失敗",
-            description: "抱歉，無法自動複製回覆到剪貼簿。請手動複製。",
-          });
-        }
-      }
-    }
-  };
+  const handleCopyReply = useCallback(() => {
+    if (generatedReply) void copyTextToClipboard(generatedReply);
+  }, [generatedReply, copyTextToClipboard]);
 
   const isCurrentlyPending = isTransitionPending;
 
   return (
     <div className="w-full max-w-2xl mx-auto">
       <Card className="shadow-xl bg-card">
-        <CardHeader className="text-center bg-primary/5 p-6">
+        <CardHeader className="text-center bg-primary/5 p-6 relative">
+          {/* 歷史紀錄抽屜按鈕（hydrated 後才顯示，避免 SSR 計數抖動） */}
+          {historyHydrated && (
+            <div className="absolute top-3 right-3">
+              <HistoryPanel
+                items={historyItems}
+                max={historyMax}
+                onApply={handleApplyHistory}
+                onRemove={removeHistory}
+                onClear={clearHistory}
+                onCopy={(text) => void copyTextToClipboard(text)}
+              />
+            </div>
+          )}
           <div className="flex items-center justify-center mb-2">
             <BotMessageSquare className="h-10 w-10 text-primary mr-3" />
             <CardTitle className="text-3xl md:text-4xl font-bold tracking-tight text-primary">教師回應訊息建議小幫手</CardTitle>
