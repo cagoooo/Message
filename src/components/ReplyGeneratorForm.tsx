@@ -3,12 +3,10 @@
 "use client";
 
 import { useState, useEffect, useTransition, useRef } from "react";
-import { useFormStatus } from "react-dom";
-import { useActionState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { handleGenerateReplyAction } from "@/lib/actions";
+import { generateReply, type ActionResult } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -80,16 +78,6 @@ const optionColors = [
   "text-emerald-500",
 ];
 
-const initialState: {
-  reply?: string;
-  error?: string;
-  fieldErrors?: { scenario?: string[]; parentMessage?: string[] };
-} = {
-  reply: undefined,
-  error: undefined,
-  fieldErrors: undefined,
-};
-
 interface SubmitButtonProps {
   isPending: boolean;
 }
@@ -120,7 +108,7 @@ function SubmitButton({ isPending }: SubmitButtonProps) {
 }
 
 export function ReplyGeneratorForm() {
-  const [state, formAction, isActionPendingOriginal] = useActionState(handleGenerateReplyAction, initialState);
+  const [state, setState] = useState<ActionResult>({});
   const [isTransitionPending, startTransition] = useTransition();
   const { toast } = useToast();
   const [generatedReply, setGeneratedReply] = useState<string | undefined>(undefined);
@@ -135,21 +123,10 @@ export function ReplyGeneratorForm() {
       parentMessage: "",
     },
   });
-  
-  useEffect(() => {
-    if (state?.reply && !isTransitionPending && !isActionPendingOriginal) {
-      // Values are kept, form.reset is not called here
-    } else if (!state?.reply && !state?.error && !state?.fieldErrors && !isTransitionPending && !isActionPendingOriginal) {
-      // If there was no reply, no error, no field errors, and not pending,
-      // it implies a reset or initial state might be desired by some logic,
-      // but for keeping values, we do nothing here.
-    }
-  }, [state, isTransitionPending, isActionPendingOriginal, form]);
-
 
   useEffect(() => {
     let timer: NodeJS.Timeout | undefined;
-    const isActive = isTransitionPending || isActionPendingOriginal;
+    const isActive = isTransitionPending;
 
     if (isActive && !generatedReply) {
       setProgress(10);
@@ -178,7 +155,7 @@ export function ReplyGeneratorForm() {
     return () => {
       clearInterval(timer);
     };
-  }, [isTransitionPending, isActionPendingOriginal, generatedReply]);
+  }, [isTransitionPending, generatedReply]);
 
   useEffect(() => {
     if (state?.reply) {
@@ -282,7 +259,7 @@ export function ReplyGeneratorForm() {
     }
   };
 
-  const isCurrentlyPending = isTransitionPending || isActionPendingOriginal;
+  const isCurrentlyPending = isTransitionPending;
 
   return (
     <div className="w-full max-w-2xl mx-auto">
@@ -302,19 +279,19 @@ export function ReplyGeneratorForm() {
               className="space-y-8"
               onSubmit={(evt) => {
                 evt.preventDefault();
-                form.handleSubmit(
-                    (data) => {
-                        const formData = new FormData();
-                        formData.append("scenario", data.scenario);
-                        formData.append("parentMessage", data.parentMessage);
-                        setGeneratedReply(undefined);
-                        setProgress(0); 
-                        startTransition(() => {
-                           formAction(formData);
-                        });
-                    }
-                )();
-            }}>
+                form.handleSubmit((data) => {
+                  setGeneratedReply(undefined);
+                  setProgress(0);
+                  setState({});
+                  startTransition(async () => {
+                    const result = await generateReply({
+                      scenario: data.scenario,
+                      parentMessage: data.parentMessage,
+                    });
+                    setState(result);
+                  });
+                })();
+              }}>
               <FormField
                 control={form.control}
                 name="scenario"
