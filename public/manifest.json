@@ -1,0 +1,33 @@
+{
+  "name": "教師回應訊息建議小幫手",
+  "short_name": "教師小幫手",
+  "description": "為親師溝通提供 AI 同理心專業回覆建議",
+  "start_url": "/Message/",
+  "scope": "/Message/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#E6E6FA",
+  "theme_color": "#7B61C4",
+  "lang": "zh-Hant",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/Message/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/Message/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/Message/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

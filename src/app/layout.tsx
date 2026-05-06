@@ -1,9 +1,10 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { FloatingAdButton } from '@/components/FloatingAdButton';
+import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 
 const siteTitle = "教師小幫手";
 const siteDescription = "為親師溝通提供小幫手支援的回覆建議。";
@@ -35,6 +36,13 @@ export const metadata: Metadata = {
   authors: [{ name: "阿凱老師", url: "https://www.smes.tyc.edu.tw/" }],
   creator: "阿凱老師",
   publisher: "桃園市石門國小資訊組",
+  manifest: `${basePath}/manifest.json`,
+  applicationName: siteTitle,
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: siteTitle,
+  },
   icons: {
     icon: [
       { url: `${basePath}/favicon.ico`, sizes: "any" },
@@ -78,6 +86,13 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#7B61C4",
+  colorScheme: "light dark",
+  width: "device-width",
+  initialScale: 1,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -89,6 +104,7 @@ export default function RootLayout({
         {children}
         <Toaster />
         <FloatingAdButton />
+        <ServiceWorkerRegister />
         <footer className="border-t border-border/50 bg-gradient-to-b from-background to-secondary/20 dark:from-background dark:to-secondary/30 py-8 text-center text-sm font-semibold text-muted-foreground">
           <p>
             © 2025 桃園市石門國小資訊組{' '}
