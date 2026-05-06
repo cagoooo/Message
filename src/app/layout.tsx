@@ -8,9 +8,12 @@ import { FloatingAdButton } from '@/components/FloatingAdButton';
 const siteTitle = "教師小幫手";
 const siteDescription = "為親師溝通提供小幫手支援的回覆建議。";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://cagoooo.github.io/Message";
-const siteImage = `${siteUrl}/og-image.png`;
 // 必須與 next.config.ts 的 basePath 同步（GitHub Pages 部署在 /Message/ 子路徑）
 const basePath = process.env.NODE_ENV === "production" ? "/Message" : "";
+// 每次 build 變動的 hash，用來 cache-bust og:image / icon URL，
+// 避免 LINE / FB 永遠顯示舊圖。
+const buildId = (process.env.NEXT_PUBLIC_BUILD_VERSION || Date.now().toString(36)).slice(0, 10);
+const siteImage = `${siteUrl}/og-image.png?v=${buildId}`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -32,7 +35,14 @@ export const metadata: Metadata = {
   authors: [{ name: "阿凱老師", url: "https://www.smes.tyc.edu.tw/" }],
   creator: "阿凱老師",
   publisher: "桃園市石門國小資訊組",
-  icons: { icon: `${basePath}/favicon.ico` },
+  icons: {
+    icon: [
+      { url: `${basePath}/favicon.ico`, sizes: "any" },
+      { url: `${basePath}/icon-192.png`, sizes: "192x192", type: "image/png" },
+      { url: `${basePath}/icon-512.png`, sizes: "512x512", type: "image/png" },
+    ],
+    apple: { url: `${basePath}/apple-touch-icon.png`, sizes: "180x180" },
+  },
   openGraph: {
     title: siteTitle,
     description: siteDescription,
