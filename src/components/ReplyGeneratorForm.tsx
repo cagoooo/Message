@@ -11,7 +11,10 @@ import { useFakeProgress } from "@/hooks/use-fake-progress";
 import { useToast } from "@/hooks/use-toast";
 import { detectPII, maskPII, type PIIWarning } from "@/lib/pii-detector";
 import { HistoryPanel } from "@/components/HistoryPanel";
-import { GeneratedReplyCard } from "@/components/reply-generator/GeneratedReplyCard";
+import {
+  GeneratedReplyCard,
+  type RefineInstruction,
+} from "@/components/reply-generator/GeneratedReplyCard";
 import { LoadingCard } from "@/components/reply-generator/LoadingCard";
 import {
   SCENARIOS,
@@ -204,6 +207,37 @@ export function ReplyGeneratorForm() {
       }, 100);
     },
     [form, toast],
+  );
+
+  // refine 模式：把目前 reply + 修改方向送回 callable，產出修訂版回覆
+  const handleRefine = useCallback(
+    (instruction: RefineInstruction) => {
+      if (!generatedReply) return;
+      if (!turnstileToken) {
+        toast({
+          variant: "destructive",
+          title: "請先完成人機驗證",
+          description: "重新調整也需要過驗證。等下方驗證綠色「成功！」再點。",
+        });
+        return;
+      }
+      const formData = form.getValues();
+      if (!formData.scenario || !formData.parentMessage) return;
+      setState({});
+      startTransition(async () => {
+        const result = await generateReply({
+          scenario: formData.scenario,
+          parentMessage: formData.parentMessage,
+          turnstileToken,
+          refineInstruction: instruction,
+          previousReply: generatedReply,
+        });
+        setState(result);
+        turnstileRef.current?.reset();
+        setTurnstileToken("");
+      });
+    },
+    [generatedReply, turnstileToken, form, toast],
   );
 
   const handleResetForm = useCallback(() => {
@@ -434,11 +468,14 @@ export function ReplyGeneratorForm() {
         </Alert>
       )}
 
-      {generatedReply && !isPending && (
+      {generatedReply && (
         <GeneratedReplyCard
           ref={replyCardRef}
           reply={generatedReply}
           onCopy={handleCopyReply}
+          onRefine={handleRefine}
+          isRefining={isPending}
+          refineDisabled={!turnstileToken}
         />
       )}
 

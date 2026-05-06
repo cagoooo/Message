@@ -8,6 +8,8 @@ const ReplySchema = z.object({
   scenario: z.string().min(1, "必須填寫情境。"),
   parentMessage: z.string().min(1, "家長訊息不能為空。"),
   turnstileToken: z.string().min(1, "請先完成人機驗證。"),
+  refineInstruction: z.string().optional(),
+  previousReply: z.string().optional(),
 });
 
 export interface ActionResult {
@@ -24,6 +26,8 @@ export async function generateReply(input: {
   scenario: string;
   parentMessage: string;
   turnstileToken: string;
+  refineInstruction?: string;
+  previousReply?: string;
 }): Promise<ActionResult> {
   const validated = ReplySchema.safeParse(input);
   if (!validated.success) {
@@ -35,7 +39,13 @@ export async function generateReply(input: {
 
   try {
     const callable = httpsCallable<
-      { scenario: string; parentMessage: string; turnstileToken: string },
+      {
+        scenario: string;
+        parentMessage: string;
+        turnstileToken: string;
+        refineInstruction?: string;
+        previousReply?: string;
+      },
       { reply: string }
     >(getFn(), "generateParentReply");
 

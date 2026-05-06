@@ -17,6 +17,9 @@ const InputSchema = z.object({
   parentMessage: z.string().min(1, "parentMessage is required"),
   scenario: z.string().min(1, "scenario is required"),
   turnstileToken: z.string().min(1, "turnstileToken is required"),
+  // refine 模式：把先前的回覆 + 修改指令一起送來，AI 會在原稿上微調
+  refineInstruction: z.string().optional(),
+  previousReply: z.string().optional(),
 });
 
 interface TurnstileVerifyResponse {
@@ -83,6 +86,43 @@ const PROMPT = `你是一位樂於助人且富有同理心的教師助理。你�
 
 請產生一則回覆，該回覆需能回應家長的關切、提供支持，並提出明確的行動方針。回覆應具備專業性、同理心，並以解決問題為導向。`;
 
+const REFINE_PROMPT = `你是一位樂於助人且富有同理心的教師助理。
+以下有一份你先前針對家長訊息產生的回覆，老師希望你依指定方向**修改原稿**。
+請使用繁體中文（台灣慣用詞彙與表達方式）。
+保留 Markdown 格式（標題、列表、粗體等）。
+**只回傳修改後的完整回覆內容，不要加任何前言、解釋或「以下是修改版」之類的開場白。**
+
+【家長的原訊息】
+{{{parentMessage}}}
+
+【情境】{{{scenario}}}
+
+【先前的回覆】
+{{{previousReply}}}
+
+【修改方向】
+{{{refineInstruction}}}
+
+請產出依此方向修改後的完整新回覆：`;
+
+function buildPrompt(input: {
+  parentMessage: string;
+  scenario: string;
+  refineInstruction?: string;
+  previousReply?: string;
+}): string {
+  if (input.refineInstruction && input.previousReply) {
+    return REFINE_PROMPT
+      .replace("{{{parentMessage}}}", input.parentMessage)
+      .replace("{{{scenario}}}", input.scenario)
+      .replace("{{{previousReply}}}", input.previousReply)
+      .replace("{{{refineInstruction}}}", input.refineInstruction);
+  }
+  return PROMPT
+    .replace("{{{parentMessage}}}", input.parentMessage)
+    .replace("{{{scenario}}}", input.scenario);
+}
+
 function isRetryableError(err: unknown): boolean {
   if (!err) return false;
   const msg = err instanceof Error ? err.message : String(err);
@@ -142,17 +182,25 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
         parsed.error.errors.map((e) => e.message).join("; "),
       );
     }
-    const { parentMessage, scenario, turnstileToken } = parsed.data;
+    const {
+      parentMessage,
+      scenario,
+      turnstileToken,
+      refineInstruction,
+      previousReply,
+    } = parsed.data;
 
     // 1. 先驗 Turnstile token —— 失敗就直接 throw，不浪費 Gemini quota
     await verifyTurnstile(turnstileToken, request.rawRequest?.ip);
 
     try {
       const ai = getAi();
-      const prompt = PROMPT.replace(
-        "{{{parentMessage}}}",
+      const prompt = buildPrompt({
         parentMessage,
-      ).replace("{{{scenario}}}", scenario);
+        scenario,
+        refineInstruction,
+        previousReply,
+      });
 
       const text = await generateWithRetry(ai, prompt, 2);
       return { reply: text };
