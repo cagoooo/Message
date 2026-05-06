@@ -16,16 +16,14 @@
 | 🔴 P0（部署前必修） | **5 / 5** | **100%** ✅ | 全部完工 |
 | 🟠 P1（兩週內修） | **7 / 8** | **87.5%** ✅ | 只有 Streaming 跳過 |
 | 🟡 P2（一個月內修） | **7 / 7** | **100%** ✅ | 除了 Streaming 全部完工 |
-| 🟢 P3（有空再修） | 0 / 5 | 0% | **還可做 5 項** |
+| 🟢 P3（有空再修） | **2 / 5** | **40%** | 還可做 3 項 |
 
-### 還可選擇做的項目摘要（共 ~17 小時可選工時）
+### 還可選擇做的項目摘要（共 ~13.5 小時可選工時）
 
 | Pri | 項目 | 工時 | 難度 |
 |---|---|---|---|
 | ⏭ P1-7 | Streaming 回應 | 5h | ⭐⭐⭐⭐ |
 | ⏳ P2-5 | 多語系 (i18n) | 5h | ⭐⭐⭐ |
-| ⏳ P3-1 | 動畫優化 (Framer Motion) | 3h | ⭐⭐ |
-| ⏳ P3-2 | 統計儀表板（管理員用） | 4h | ⭐⭐⭐ |
 | ⏳ P3-3 | 模型切換（Flash / Pro） | 30m | ⭐ |
 | ⏳ P3-4 | 範本（Template）庫 | 2h | ⭐⭐ |
 | ⏳ P3-5 | 老師專屬「家長性格筆記」（雲端） | 6h | ⭐⭐⭐⭐ |
@@ -293,28 +291,31 @@ export const generateParentReplyStream = onRequest({
 
 ---
 
-## 🟢 P3 — 有空再做（5 項可選）
+## 🟢 P3 — 有空再做（剩 3 項可選）
 
-### ⏳ P3-1. 動畫優化
+### ✅ P3-1. 動畫優化 — 完成
 
-- 表單 progressive disclosure 動畫
-- Markdown 渲染 typewriter 效果
-- 滑入轉場 (Framer Motion)
-
-**預估工時**：3 小時 ｜ **難度**：⭐⭐
+**Commit**：[Batch 11](https://github.com/cagoooo/Message/commit/215d4c9)
+**實際做法**：用 motion v12（Framer Motion 改名版，bundle 較小）：
+- GeneratedReplyCard 整張卡片 spring 滑入；refine 後 reply 內容 fade 切換；refine 4 個按鈕 stagger 跳出
+- HistoryPanel 條目 stagger fade-in；刪除單筆時 layout 動畫平滑 collapse
+- LoadingCard 卡片 + 4 條 skeleton 各自延遲進場
+- InstallPrompt 從 tailwind animate-in 升級成 motion spring + AnimatePresence
 
 ---
 
-### ⏳ P3-2. 統計儀表板（管理員用）
+### ✅ P3-2. 統計儀表板（管理員用） — 完成
 
-- 每日呼叫次數
-- 各情境使用比例
-- 平均生成時間
-- API 用量警示
-
-**做法**：用 Firebase Analytics（免費）或自建 Firestore stats collection + Cloud Function aggregator。
-
-**預估工時**：4 小時 ｜ **難度**：⭐⭐⭐
+**Commit**：[Batch 12](https://github.com/cagoooo/Message/commit/dc35dd4)
+**實際做法**：
+- Function 端：generateParentReply 成功後 fire-and-forget logStats() 寫
+  Firestore `stats_daily/{YYYY-MM-DD}`（含 byScenario / byMode / withImage / withAdvanced）
+- 新 callable `getStats(password)`：取最近 30 天 + auto aggregate summary
+- ADMIN_PASSWORD 從 GCP Secret Manager 注入
+- /stats route：密碼門 + 4 張摘要卡（總次數、平均字數、附圖比例、最常用情境）
+  + 每日折線圖 + 情境圓餅圖（用 recharts）
+- robots: noindex,nofollow（不被搜尋引擎索引）
+- ⚠️ 部署後管理員需手動設定密碼：見 commit message 內指令
 
 ---
 
@@ -374,13 +375,12 @@ export const generateParentReplyStream = onRequest({
 
 ## 🎯 結語
 
-🎉 **P0 100%、P1 87.5%、P2 71% 完成，整個 App 已是高完成度的生產級 PWA。**
+🎉 **P0 100%、P1 87.5%、P2 100%、P3 40% — 整個 App 已是高完成度的生產級 PWA + 校內試用就緒。**
 
-剩下的全是「**錦上添花**」，可以慢慢按需求挑選做：
-- 想先試最小投入：**P3-3 模型切換（30 分）** ＋ **P3-4 範本庫（2h）** ＝ 2.5 小時就能再加兩個小亮點
-- 想擴展功能性：**P2-2 自訂 Prompt（2h）+ P2-4 OCR 截圖（4h）** 體驗會大幅升級
-- 想擴展為協作平台：**P3-5 雲端家長筆記（6h）** 是基石（接 Firebase Auth）
-- 想加趣味度：**P3-1 動畫（3h）+ P3-2 儀表板（4h）**
+剩下的 3 項 P3 可慢慢挑：
+- **P3-3 模型切換 Flash/Pro（30 分）** — 表單上方 Select，最快有感
+- **P3-4 範本庫（2h）** — 預存常用回覆樣板（搭配 P2-2 進階 Prompt 強化）
+- **P3-5 雲端家長筆記（6h）** — Firebase Auth + Firestore，平台化基石
 
 ---
 
