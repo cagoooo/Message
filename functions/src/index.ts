@@ -25,6 +25,15 @@ const InputSchema = z.object({
   teacherName: z.string().max(50).optional(),
   studentGrade: z.string().max(30).optional(),
   notes: z.string().max(500).optional(),
+  // 對話截圖（base64 data URL，前端已壓縮 < 1MB）
+  imageDataUrl: z
+    .string()
+    .regex(
+      /^data:image\/(jpeg|png|webp);base64,/i,
+      "imageDataUrl 必須是 image/(jpeg|png|webp) 的 base64 data URL",
+    )
+    .max(10 * 1024 * 1024, "圖片過大")
+    .optional(),
 });
 
 interface TurnstileVerifyResponse {
@@ -125,7 +134,9 @@ function buildContextBlock(input: {
   return `\n【教學情境補充資訊（請適度納入回覆語氣與用詞）】\n${lines.join("\n")}\n`;
 }
 
-function buildPrompt(input: {
+type PromptPart = { text: string } | { media: { url: string } };
+
+function buildPromptText(input: {
   parentMessage: string;
   scenario: string;
   refineInstruction?: string;
@@ -134,22 +145,63 @@ function buildPrompt(input: {
   teacherName?: string;
   studentGrade?: string;
   notes?: string;
+  hasImage: boolean;
 }): string {
   const context = buildContextBlock(input);
+  // 有圖時在原訊息前加引導，讓 AI 把圖納入辨識
+  const imageHint = input.hasImage
+    ? "\n【附帶截圖】使用者上傳了一張對話截圖（如下）。請辨識截圖中的對話內容後，連同下方家長訊息一併參考，產生回覆。\n"
+    : "";
+
   if (input.refineInstruction && input.previousReply) {
     return (
       REFINE_PROMPT
         .replace("{{{parentMessage}}}", input.parentMessage)
         .replace("{{{scenario}}}", input.scenario)
         .replace("{{{previousReply}}}", input.previousReply)
-        .replace("{{{refineInstruction}}}", input.refineInstruction) + context
+        .replace("{{{refineInstruction}}}", input.refineInstruction) +
+      context +
+      imageHint
     );
   }
   return (
     PROMPT
       .replace("{{{parentMessage}}}", input.parentMessage)
-      .replace("{{{scenario}}}", input.scenario) + context
+      .replace("{{{scenario}}}", input.scenario) +
+    context +
+    imageHint
   );
+}
+
+function buildPromptParts(input: {
+  parentMessage: string;
+  scenario: string;
+  refineInstruction?: string;
+  previousReply?: string;
+  schoolName?: string;
+  teacherName?: string;
+  studentGrade?: string;
+  notes?: string;
+  imageDataUrl?: string;
+}): PromptPart[] {
+  const parts: PromptPart[] = [];
+  parts.push({
+    text: buildPromptText({
+      parentMessage: input.parentMessage,
+      scenario: input.scenario,
+      refineInstruction: input.refineInstruction,
+      previousReply: input.previousReply,
+      schoolName: input.schoolName,
+      teacherName: input.teacherName,
+      studentGrade: input.studentGrade,
+      notes: input.notes,
+      hasImage: !!input.imageDataUrl,
+    }),
+  });
+  if (input.imageDataUrl) {
+    parts.push({ media: { url: input.imageDataUrl } });
+  }
+  return parts;
 }
 
 function isRetryableError(err: unknown): boolean {
@@ -161,7 +213,7 @@ function isRetryableError(err: unknown): boolean {
 
 async function generateWithRetry(
   ai: ReturnType<typeof genkit>,
-  prompt: string,
+  prompt: string | PromptPart[],
   maxRetries = 2,
 ): Promise<string> {
   let lastErr: unknown = null;
@@ -221,6 +273,7 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
       teacherName,
       studentGrade,
       notes,
+      imageDataUrl,
     } = parsed.data;
 
     // 1. 先驗 Turnstile token —— 失敗就直接 throw，不浪費 Gemini quota
@@ -228,7 +281,7 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
 
     try {
       const ai = getAi();
-      const prompt = buildPrompt({
+      const promptParts = buildPromptParts({
         parentMessage,
         scenario,
         refineInstruction,
@@ -237,7 +290,13 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
         teacherName,
         studentGrade,
         notes,
+        imageDataUrl,
       });
+
+      // 沒圖片時用純文字（節省 SDK 處理開銷），有圖片才用 multimodal array
+      const prompt: string | PromptPart[] = imageDataUrl
+        ? promptParts
+        : (promptParts[0] as { text: string }).text;
 
       const text = await generateWithRetry(ai, prompt, 2);
       return { reply: text };

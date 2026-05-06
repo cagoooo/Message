@@ -17,6 +17,8 @@ import {
   type RefineInstruction,
 } from "@/components/reply-generator/GeneratedReplyCard";
 import { AdvancedSettings } from "@/components/reply-generator/AdvancedSettings";
+import { ImageUpload } from "@/components/reply-generator/ImageUpload";
+import type { ProcessedImage } from "@/lib/image-processor";
 import { LoadingCard } from "@/components/reply-generator/LoadingCard";
 import {
   SCENARIOS,
@@ -118,6 +120,7 @@ export function ReplyGeneratorForm() {
   const [turnstileToken, setTurnstileToken] = useState<string>("");
   const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const replyCardRef = useRef<HTMLDivElement>(null);
+  const [uploadedImage, setUploadedImage] = useState<ProcessedImage | null>(null);
 
   // PII 警示狀態：偵測到敏感資料時暫停送出，等使用者確認
   const [piiDialog, setPiiDialog] = useState<{
@@ -271,6 +274,8 @@ export function ReplyGeneratorForm() {
           teacherName: formData.teacherName || undefined,
           studentGrade: formData.studentGrade || undefined,
           notes: formData.notes || undefined,
+          // refine 時不需要再傳一次圖（previousReply 已含 OCR 結果），
+          // 省下一次 multimodal token 也避免延遲
         });
         setState(result);
         turnstileRef.current?.reset();
@@ -281,7 +286,7 @@ export function ReplyGeneratorForm() {
   );
 
   const handleResetForm = useCallback(() => {
-    // 重設只清空情境 / 訊息，保留進階情境（學校/老師/年級）方便下次連續使用
+    // 重設只清空情境 / 訊息 / 截圖，保留進階情境（學校/老師/年級）方便下次連續使用
     form.reset({
       scenario: "",
       parentMessage: "",
@@ -293,6 +298,7 @@ export function ReplyGeneratorForm() {
     setGeneratedReply(undefined);
     setState({});
     setTurnstileToken("");
+    setUploadedImage(null);
     turnstileRef.current?.reset();
     toast({
       title: "已重設",
@@ -341,6 +347,7 @@ export function ReplyGeneratorForm() {
           teacherName: data.teacherName || undefined,
           studentGrade: data.studentGrade || undefined,
           notes: data.notes || undefined,
+          imageDataUrl: uploadedImage?.dataUrl,
         });
         setState(result);
         // 用過的 token 立即重置（單次有效）
@@ -348,7 +355,7 @@ export function ReplyGeneratorForm() {
         setTurnstileToken("");
       });
     },
-    [turnstileToken],
+    [turnstileToken, uploadedImage],
   );
 
   const handleSubmit = (data: FormSchemaType) => {
@@ -508,6 +515,12 @@ export function ReplyGeneratorForm() {
                     </FormItem>
                   );
                 }}
+              />
+
+              <ImageUpload
+                value={uploadedImage}
+                onChange={setUploadedImage}
+                disabled={isPending}
               />
 
               <div className="space-y-3">

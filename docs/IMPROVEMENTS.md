@@ -15,16 +15,14 @@
 |---|---|---|---|
 | 🔴 P0（部署前必修） | **5 / 5** | **100%** ✅ | 全部完工 |
 | 🟠 P1（兩週內修） | **7 / 8** | **87.5%** ✅ | 只有 Streaming 跳過 |
-| 🟡 P2（一個月內修） | **5 / 7** | **71%** ✅ | 又完成 4 項 |
+| 🟡 P2（一個月內修） | **7 / 7** | **100%** ✅ | 除了 Streaming 全部完工 |
 | 🟢 P3（有空再修） | 0 / 5 | 0% | **還可做 5 項** |
 
-### 還可選擇做的項目摘要（共 ~23 小時可選工時）
+### 還可選擇做的項目摘要（共 ~17 小時可選工時）
 
 | Pri | 項目 | 工時 | 難度 |
 |---|---|---|---|
 | ⏭ P1-7 | Streaming 回應 | 5h | ⭐⭐⭐⭐ |
-| ⏳ P2-2 | 自訂 Prompt 進階模式 | 2h | ⭐⭐ |
-| ⏳ P2-4 | OCR 上傳對話截圖 | 4h | ⭐⭐⭐ |
 | ⏳ P2-5 | 多語系 (i18n) | 5h | ⭐⭐⭐ |
 | ⏳ P3-1 | 動畫優化 (Framer Motion) | 3h | ⭐⭐ |
 | ⏳ P3-2 | 統計儀表板（管理員用） | 4h | ⭐⭐⭐ |
@@ -208,7 +206,7 @@ export const generateParentReplyStream = onRequest({
 
 ---
 
-## 🟡 P2 — 一個月內處理（剩 2 項可選）
+## 🟡 P2 — 一個月內處理（全部完工 7/7 ✅）
 
 ### ✅ P2-1. 「一鍵分享 LINE」功能 — 完成
 
@@ -217,28 +215,15 @@ export const generateParentReplyStream = onRequest({
 
 ---
 
-### ⏳ P2-2. 自訂 Prompt 進階模式
+### ✅ P2-2. 自訂 Prompt 進階模式 — 完成
 
-**情境**：老師想加上「我們學校特殊背景」「家長的個性」等資訊。
-
-**做法**：表單下加「進階設定」摺疊區：
-- 學校名稱
-- 教師姓名
-- 學生年級
-- 額外備註（例：「這位家長特別重視書面紀錄」）
-
-把這些塞進 prompt：
-
-```ts
-prompt: `你是一位老師（${teacherName}）的教師助理...
-學生年級：${grade}
-特殊備註：${notes}
-家長的訊息: ${parentMessage}
-情境: ${scenario}
-...`,
-```
-
-**預估工時**：2 小時 ｜ **難度**：⭐⭐
+**Commit**：[Batch 9](https://github.com/cagoooo/Message/commit/227eb07)
+**實際做法**：
+- 表單加 shadcn Accordion 摺疊區塊「進階情境（選填）」
+- 4 欄位：學校 / 老師姓名 / 學生年級（13 項下拉）/ 本次特殊備註
+- `useFormDefaults` hook 把學校／老師／年級存 localStorage，下次自動帶入
+- 「儲存為預設」+「清除預設」按鈕
+- Function 端 `buildContextBlock()` 組成「【教學情境補充資訊】」加在 prompt 後
 
 ---
 
@@ -253,21 +238,23 @@ prompt: `你是一位老師（${teacherName}）的教師助理...
 
 ---
 
-### ⏳ P2-4. 支援上傳對話截圖（OCR）
+### ✅ P2-4. 支援上傳對話截圖（OCR）— 完成
 
-**情境**：老師收到 LINE 截圖懶得打字。
-
-**做法**：
-- 用 Gemini 2.5 Flash 的 vision 能力（直接吃圖片）
-- 在表單加「📷 上傳截圖」按鈕
-- File API → base64 → 傳給 Gemini
-
-```ts
-const imagePart = { inlineData: { data: base64, mimeType: "image/png" } };
-const result = await ai.generate({ prompt: [..., imagePart] });
-```
-
-**預估工時**：4 小時 ｜ **難度**：⭐⭐⭐
+**Commit**：[Batch 10](https://github.com/cagoooo/Message/commits/main)（pending push）
+**實際做法**：
+- `src/lib/image-processor.ts` — Canvas API resize（長邊 ≤1280px）+ JPEG 0.85 壓縮
+  · 5 MB 截圖 → 通常 < 300 KB，遠低於 callable 10 MB 上限
+  · 白底處理 PNG 透明背景轉 JPEG 變黑問題
+- `src/components/reply-generator/ImageUpload.tsx` — 隱藏 file input + 自訂按鈕
+  · 顯示縮圖預覽 + 尺寸/檔案大小 + 移除按鈕
+  · 處理中 spinner，error 時 toast 提示
+- Function 端：
+  · InputSchema 加 `imageDataUrl` (regex 限制 image/(jpeg|png|webp) base64)
+  · `buildPromptParts()` 回傳 `Array<{text}|{media}>` multimodal parts
+  · 沒圖時繼續用純文字（節省 SDK 開銷）
+  · 有圖時 prompt 前段加「【附帶截圖】請辨識內容」引導 AI
+- ReplyGeneratorForm `uploadedImage` state 接給 ImageUpload，submit 時帶 dataUrl
+- refine 模式不重傳圖（previousReply 已含 OCR 結果，省 token）
 
 ---
 

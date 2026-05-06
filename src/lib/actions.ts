@@ -14,6 +14,11 @@ const ReplySchema = z.object({
   teacherName: z.string().max(50).optional(),
   studentGrade: z.string().max(30).optional(),
   notes: z.string().max(500).optional(),
+  imageDataUrl: z
+    .string()
+    .regex(/^data:image\/(jpeg|png|webp);base64,/i, "圖片格式不正確")
+    .max(10 * 1024 * 1024, "圖片過大")
+    .optional(),
 });
 
 export interface AdvancedSettings {
@@ -43,6 +48,7 @@ export async function generateReply(input: {
   teacherName?: string;
   studentGrade?: string;
   notes?: string;
+  imageDataUrl?: string;
 }): Promise<ActionResult> {
   const validated = ReplySchema.safeParse(input);
   if (!validated.success) {
@@ -64,6 +70,7 @@ export async function generateReply(input: {
         teacherName?: string;
         studentGrade?: string;
         notes?: string;
+        imageDataUrl?: string;
       },
       { reply: string }
     >(getFn(), "generateParentReply");
