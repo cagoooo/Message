@@ -20,6 +20,11 @@ const InputSchema = z.object({
   // refine 模式：把先前的回覆 + 修改指令一起送來，AI 會在原稿上微調
   refineInstruction: z.string().optional(),
   previousReply: z.string().optional(),
+  // 進階情境（皆 optional，前端摺疊區塊填寫）
+  schoolName: z.string().max(100).optional(),
+  teacherName: z.string().max(50).optional(),
+  studentGrade: z.string().max(30).optional(),
+  notes: z.string().max(500).optional(),
 });
 
 interface TurnstileVerifyResponse {
@@ -105,22 +110,46 @@ const REFINE_PROMPT = `你是一位樂於助人且富有同理心的教師助理
 
 請產出依此方向修改後的完整新回覆：`;
 
+function buildContextBlock(input: {
+  schoolName?: string;
+  teacherName?: string;
+  studentGrade?: string;
+  notes?: string;
+}): string {
+  const lines: string[] = [];
+  if (input.schoolName) lines.push(`學校：${input.schoolName}`);
+  if (input.teacherName) lines.push(`老師：${input.teacherName}`);
+  if (input.studentGrade) lines.push(`學生年級：${input.studentGrade}`);
+  if (input.notes) lines.push(`其他備註：${input.notes}`);
+  if (lines.length === 0) return "";
+  return `\n【教學情境補充資訊（請適度納入回覆語氣與用詞）】\n${lines.join("\n")}\n`;
+}
+
 function buildPrompt(input: {
   parentMessage: string;
   scenario: string;
   refineInstruction?: string;
   previousReply?: string;
+  schoolName?: string;
+  teacherName?: string;
+  studentGrade?: string;
+  notes?: string;
 }): string {
+  const context = buildContextBlock(input);
   if (input.refineInstruction && input.previousReply) {
-    return REFINE_PROMPT
-      .replace("{{{parentMessage}}}", input.parentMessage)
-      .replace("{{{scenario}}}", input.scenario)
-      .replace("{{{previousReply}}}", input.previousReply)
-      .replace("{{{refineInstruction}}}", input.refineInstruction);
+    return (
+      REFINE_PROMPT
+        .replace("{{{parentMessage}}}", input.parentMessage)
+        .replace("{{{scenario}}}", input.scenario)
+        .replace("{{{previousReply}}}", input.previousReply)
+        .replace("{{{refineInstruction}}}", input.refineInstruction) + context
+    );
   }
-  return PROMPT
-    .replace("{{{parentMessage}}}", input.parentMessage)
-    .replace("{{{scenario}}}", input.scenario);
+  return (
+    PROMPT
+      .replace("{{{parentMessage}}}", input.parentMessage)
+      .replace("{{{scenario}}}", input.scenario) + context
+  );
 }
 
 function isRetryableError(err: unknown): boolean {
@@ -188,6 +217,10 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
       turnstileToken,
       refineInstruction,
       previousReply,
+      schoolName,
+      teacherName,
+      studentGrade,
+      notes,
     } = parsed.data;
 
     // 1. 先驗 Turnstile token —— 失敗就直接 throw，不浪費 Gemini quota
@@ -200,6 +233,10 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
         scenario,
         refineInstruction,
         previousReply,
+        schoolName,
+        teacherName,
+        studentGrade,
+        notes,
       });
 
       const text = await generateWithRetry(ai, prompt, 2);

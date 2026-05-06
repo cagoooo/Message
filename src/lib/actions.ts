@@ -10,7 +10,18 @@ const ReplySchema = z.object({
   turnstileToken: z.string().min(1, "請先完成人機驗證。"),
   refineInstruction: z.string().optional(),
   previousReply: z.string().optional(),
+  schoolName: z.string().max(100).optional(),
+  teacherName: z.string().max(50).optional(),
+  studentGrade: z.string().max(30).optional(),
+  notes: z.string().max(500).optional(),
 });
+
+export interface AdvancedSettings {
+  schoolName?: string;
+  teacherName?: string;
+  studentGrade?: string;
+  notes?: string;
+}
 
 export interface ActionResult {
   reply?: string;
@@ -28,6 +39,10 @@ export async function generateReply(input: {
   turnstileToken: string;
   refineInstruction?: string;
   previousReply?: string;
+  schoolName?: string;
+  teacherName?: string;
+  studentGrade?: string;
+  notes?: string;
 }): Promise<ActionResult> {
   const validated = ReplySchema.safeParse(input);
   if (!validated.success) {
@@ -45,6 +60,10 @@ export async function generateReply(input: {
         turnstileToken: string;
         refineInstruction?: string;
         previousReply?: string;
+        schoolName?: string;
+        teacherName?: string;
+        studentGrade?: string;
+        notes?: string;
       },
       { reply: string }
     >(getFn(), "generateParentReply");

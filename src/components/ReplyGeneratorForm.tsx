@@ -8,6 +8,7 @@ import { generateReply, type ActionResult } from "@/lib/actions";
 import { useHistory, type HistoryEntry } from "@/hooks/use-history";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { useFakeProgress } from "@/hooks/use-fake-progress";
+import { useFormDefaults } from "@/hooks/use-form-defaults";
 import { useToast } from "@/hooks/use-toast";
 import { detectPII, maskPII, type PIIWarning } from "@/lib/pii-detector";
 import { HistoryPanel } from "@/components/HistoryPanel";
@@ -15,6 +16,7 @@ import {
   GeneratedReplyCard,
   type RefineInstruction,
 } from "@/components/reply-generator/GeneratedReplyCard";
+import { AdvancedSettings } from "@/components/reply-generator/AdvancedSettings";
 import { LoadingCard } from "@/components/reply-generator/LoadingCard";
 import {
   SCENARIOS,
@@ -76,6 +78,11 @@ const formSchema = z.object({
     .string({ required_error: "請選擇一個情境。" })
     .min(1, "必須填寫情境。"),
   parentMessage: z.string().min(5, { message: "家長訊息至少需 5 個字元。" }),
+  // 進階情境（皆 optional）
+  schoolName: z.string().max(100).optional(),
+  teacherName: z.string().max(50).optional(),
+  studentGrade: z.string().max(30).optional(),
+  notes: z.string().max(500).optional(),
 });
 type FormSchemaType = z.infer<typeof formSchema>;
 
@@ -131,10 +138,39 @@ export function ReplyGeneratorForm() {
     max: historyMax,
   } = useHistory();
 
+  const {
+    defaults: savedDefaults,
+    hydrated: defaultsHydrated,
+    save: saveDefaults,
+    clear: clearDefaults,
+  } = useFormDefaults();
+
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
-    defaultValues: { scenario: "", parentMessage: "" },
+    defaultValues: {
+      scenario: "",
+      parentMessage: "",
+      schoolName: "",
+      teacherName: "",
+      studentGrade: "",
+      notes: "",
+    },
   });
+
+  // 偏好設定載入後，補回表單（不覆蓋使用者已輸入的）
+  useEffect(() => {
+    if (!defaultsHydrated) return;
+    const current = form.getValues();
+    if (savedDefaults.schoolName && !current.schoolName) {
+      form.setValue("schoolName", savedDefaults.schoolName);
+    }
+    if (savedDefaults.teacherName && !current.teacherName) {
+      form.setValue("teacherName", savedDefaults.teacherName);
+    }
+    if (savedDefaults.studentGrade && !current.studentGrade) {
+      form.setValue("studentGrade", savedDefaults.studentGrade);
+    }
+  }, [defaultsHydrated, savedDefaults, form]);
 
   // 結果處理：成功 → 加入歷史 + scroll；錯誤 → toast；fieldErrors → form.setError
   useEffect(() => {
@@ -231,6 +267,10 @@ export function ReplyGeneratorForm() {
           turnstileToken,
           refineInstruction: instruction,
           previousReply: generatedReply,
+          schoolName: formData.schoolName || undefined,
+          teacherName: formData.teacherName || undefined,
+          studentGrade: formData.studentGrade || undefined,
+          notes: formData.notes || undefined,
         });
         setState(result);
         turnstileRef.current?.reset();
@@ -241,23 +281,67 @@ export function ReplyGeneratorForm() {
   );
 
   const handleResetForm = useCallback(() => {
-    form.reset({ scenario: "", parentMessage: "" });
+    // 重設只清空情境 / 訊息，保留進階情境（學校/老師/年級）方便下次連續使用
+    form.reset({
+      scenario: "",
+      parentMessage: "",
+      schoolName: form.getValues("schoolName") ?? "",
+      teacherName: form.getValues("teacherName") ?? "",
+      studentGrade: form.getValues("studentGrade") ?? "",
+      notes: "",
+    });
     setGeneratedReply(undefined);
     setState({});
     setTurnstileToken("");
     turnstileRef.current?.reset();
     toast({
       title: "已重設",
-      description: "表單已清空，可開始新的回覆草稿。",
+      description: "表單已清空（保留進階情境設定），可開始新的回覆草稿。",
     });
   }, [form, toast]);
+
+  const handleSaveDefaults = useCallback(() => {
+    const v = form.getValues();
+    saveDefaults({
+      schoolName: v.schoolName?.trim() || undefined,
+      teacherName: v.teacherName?.trim() || undefined,
+      studentGrade: v.studentGrade?.trim() || undefined,
+    });
+    toast({
+      title: "預設已儲存",
+      description: "下次打開網站會自動帶入學校／老師／年級。",
+      variant: "success",
+    });
+  }, [form, saveDefaults, toast]);
+
+  const handleClearDefaults = useCallback(() => {
+    clearDefaults();
+    toast({
+      title: "預設已清除",
+      description: "下次打開不會自動帶入。當前表單值不變。",
+    });
+  }, [clearDefaults, toast]);
+
+  const hasSavedDefaults = !!(
+    savedDefaults.schoolName ||
+    savedDefaults.teacherName ||
+    savedDefaults.studentGrade
+  );
 
   const actuallySubmit = useCallback(
     (data: FormSchemaType) => {
       setGeneratedReply(undefined);
       setState({});
       startTransition(async () => {
-        const result = await generateReply({ ...data, turnstileToken });
+        const result = await generateReply({
+          scenario: data.scenario,
+          parentMessage: data.parentMessage,
+          turnstileToken,
+          schoolName: data.schoolName || undefined,
+          teacherName: data.teacherName || undefined,
+          studentGrade: data.studentGrade || undefined,
+          notes: data.notes || undefined,
+        });
         setState(result);
         // 用過的 token 立即重置（單次有效）
         turnstileRef.current?.reset();
@@ -376,6 +460,13 @@ export function ReplyGeneratorForm() {
                     </FormItem>
                   );
                 }}
+              />
+
+              <AdvancedSettings
+                form={form}
+                onSaveDefaults={handleSaveDefaults}
+                onClearDefaults={handleClearDefaults}
+                hasDefaults={hasSavedDefaults}
               />
 
               <FormField
