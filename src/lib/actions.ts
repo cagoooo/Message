@@ -47,8 +47,10 @@ export async function generateReply(input: {
     }
     return { reply };
   } catch (e) {
-    console.error("小幫手 reply generation failed:", e);
-    const msg = e instanceof Error ? e.message : "小幫手回覆產生過程中發生未知錯誤。";
-    return { error: `小幫手錯誤： ${msg}` };
+    console.error("[generateReply] callable failed:", e);
+    // FirebaseError.message 已是 server 端設好的友善文字（含中文），
+    // 不要再加「小幫手錯誤：」前綴避免重複。
+    const msg = e instanceof Error ? e.message : "回覆產生時發生未知錯誤，請稍後重試。";
+    return { error: msg };
   }
 }

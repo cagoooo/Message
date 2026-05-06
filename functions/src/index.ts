@@ -83,6 +83,38 @@ const PROMPT = `你是一位樂於助人且富有同理心的教師助理。你�
 
 請產生一則回覆，該回覆需能回應家長的關切、提供支持，並提出明確的行動方針。回覆應具備專業性、同理心，並以解決問題為導向。`;
 
+function isRetryableError(err: unknown): boolean {
+  if (!err) return false;
+  const msg = err instanceof Error ? err.message : String(err);
+  // Google AI 過載 / 限流 / 暫時不可用
+  return /\b(503|429|overload|unavailable|temporary|temporarily)\b/i.test(msg);
+}
+
+async function generateWithRetry(
+  ai: ReturnType<typeof genkit>,
+  prompt: string,
+  maxRetries = 2,
+): Promise<string> {
+  let lastErr: unknown = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const { text } = await ai.generate({ prompt });
+      if (!text) throw new Error("AI 回覆為空");
+      return text;
+    } catch (err) {
+      lastErr = err;
+      if (!isRetryableError(err) || attempt === maxRetries) throw err;
+      const delayMs = 1000 * Math.pow(2, attempt); // 1s → 2s
+      logger.warn(
+        `Gemini call failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delayMs}ms`,
+        { error: err instanceof Error ? err.message : String(err) },
+      );
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
 let cachedAi: ReturnType<typeof genkit> | null = null;
 function getAi() {
   if (!cachedAi) {
@@ -117,23 +149,27 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
 
     try {
       const ai = getAi();
-      const prompt = PROMPT.replace("{{{parentMessage}}}", parentMessage).replace(
-        "{{{scenario}}}",
-        scenario,
-      );
+      const prompt = PROMPT.replace(
+        "{{{parentMessage}}}",
+        parentMessage,
+      ).replace("{{{scenario}}}", scenario);
 
-      const { text } = await ai.generate({ prompt });
-
-      if (!text) {
-        throw new HttpsError("internal", "AI returned empty response");
-      }
-
+      const text = await generateWithRetry(ai, prompt, 2);
       return { reply: text };
     } catch (err) {
       logger.error("generateParentReply failed", err);
       if (err instanceof HttpsError) throw err;
       const msg = err instanceof Error ? err.message : "unknown error";
-      throw new HttpsError("internal", `小幫手錯誤： ${msg}`);
+
+      // 對 Gemini 過載 / 限流給友善訊息
+      if (isRetryableError(err)) {
+        throw new HttpsError(
+          "resource-exhausted",
+          "AI 服務暫時繁忙（Google 端過載），請稍候 30 秒再試一次。如持續發生，可能是模型升級或維護中。",
+        );
+      }
+
+      throw new HttpsError("internal", `小幫手回覆失敗：${msg}`);
     }
   },
 );
