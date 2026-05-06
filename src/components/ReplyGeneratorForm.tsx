@@ -1,14 +1,22 @@
-
-// src/components/ReplyGeneratorForm.tsx
 "use client";
 
-import { useState, useEffect, useTransition, useRef, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { generateReply, type ActionResult } from "@/lib/actions";
 import { useHistory, type HistoryEntry } from "@/hooks/use-history";
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
+import { useFakeProgress } from "@/hooks/use-fake-progress";
+import { useToast } from "@/hooks/use-toast";
 import { HistoryPanel } from "@/components/HistoryPanel";
+import { GeneratedReplyCard } from "@/components/reply-generator/GeneratedReplyCard";
+import { LoadingCard } from "@/components/reply-generator/LoadingCard";
+import {
+  SCENARIOS,
+  OPTION_COLORS,
+  getScenarioLabel,
+} from "@/components/reply-generator/constants";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,64 +43,30 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
-import { BotMessageSquare, Sparkles, Copy, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
-import ReactMarkdown from 'react-markdown';
+import {
+  AlertTriangle,
+  BotMessageSquare,
+  Loader2,
+  RefreshCw,
+  Sparkles,
+} from "lucide-react";
 
 const formSchema = z.object({
-  scenario: z.string({ required_error: "請選擇一個情境。" }).min(1, "必須填寫情境。"),
+  scenario: z
+    .string({ required_error: "請選擇一個情境。" })
+    .min(1, "必須填寫情境。"),
   parentMessage: z.string().min(10, { message: "家長訊息至少需10個字元。" }),
 });
-
 type FormSchemaType = z.infer<typeof formSchema>;
 
-const scenarios = [
-  { value: "Child Injury", label: "孩童受傷" },
-  { value: "Serious Conflict", label: "嚴重衝突" },
-  { value: "Irrational Message", label: "回應不理性訊息" },
-  { value: "Academic Concern", label: "學業問題" },
-  { value: "Behavioral Issue", label: "行為問題" },
-  { value: "Positive Feedback", label: "家長正面回饋" },
-  { value: "Request for Meeting", label: "家長要求會面" },
-  { value: "Missed Homework/Assignment", label: "缺交作業" },
-  { value: "Upcoming Event Inquiry", label: "活動詢問" },
-  { value: "Health Concern", label: "健康問題（如過敏、生病）" },
-  { value: "General Inquiry", label: "一般詢問" },
-  { value: "Other", label: "其他" },
-];
-
-const optionColors = [
-  "text-red-500",
-  "text-blue-500",
-  "text-green-500",
-  "text-yellow-500",
-  "text-purple-500",
-  "text-pink-500",
-  "text-indigo-500",
-  "text-teal-500",
-  "text-orange-500",
-  "text-cyan-500",
-  "text-lime-500",
-  "text-emerald-500",
-];
-
-interface SubmitButtonProps {
-  isPending: boolean;
-}
-
-function SubmitButton({ isPending }: SubmitButtonProps) {
+function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
     <Button
       type="submit"
       disabled={isPending}
-      className={`w-full sm:w-auto bg-warm-orange-red text-warm-orange-red-foreground hover:bg-warm-orange-red/90
-                 transform transition-transform duration-300 ease-in-out
-                 hover:scale-110 active:scale-105
-                 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-warm-orange-red/80`}
+      className="w-full sm:w-auto bg-warm-orange-red text-warm-orange-red-foreground hover:bg-warm-orange-red/90 transform transition-transform duration-300 ease-in-out hover:scale-110 active:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-warm-orange-red/80"
     >
       {isPending ? (
         <>
@@ -111,13 +85,14 @@ function SubmitButton({ isPending }: SubmitButtonProps) {
 
 export function ReplyGeneratorForm() {
   const [state, setState] = useState<ActionResult>({});
-  const [isTransitionPending, startTransition] = useTransition();
-  const { toast } = useToast();
-  const [generatedReply, setGeneratedReply] = useState<string | undefined>(undefined);
-  const [progress, setProgress] = useState(0);
-  const replyCardRef = useRef<HTMLDivElement>(null);
+  const [isPending, startTransition] = useTransition();
+  const [generatedReply, setGeneratedReply] = useState<string | undefined>();
   const [isScenarioSelectOpen, setIsScenarioSelectOpen] = useState(false);
+  const replyCardRef = useRef<HTMLDivElement>(null);
 
+  const { toast } = useToast();
+  const copyToClipboard = useCopyToClipboard();
+  const progress = useFakeProgress(isPending, !!generatedReply);
   const {
     items: historyItems,
     hydrated: historyHydrated,
@@ -129,59 +104,59 @@ export function ReplyGeneratorForm() {
 
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      scenario: "",
-      parentMessage: "",
-    },
+    defaultValues: { scenario: "", parentMessage: "" },
   });
 
-  // 共用的剪貼簿邏輯：先試 Clipboard API → fallback 到 execCommand
-  const copyTextToClipboard = useCallback(
-    async (text: string, label: string = "回覆") => {
-      if (!text) return;
-      let ok = false;
-      if (navigator.clipboard?.writeText) {
-        try {
-          await navigator.clipboard.writeText(text);
-          ok = true;
-        } catch (err) {
-          console.warn("Clipboard API failed, fallback:", err);
-        }
-      }
-      if (!ok) {
-        try {
-          const ta = document.createElement("textarea");
-          ta.value = text;
-          ta.style.position = "fixed";
-          ta.style.left = "-9999px";
-          ta.style.top = "-9999px";
-          document.body.appendChild(ta);
-          ta.focus();
-          ta.select();
-          ok = document.execCommand("copy");
-          document.body.removeChild(ta);
-        } catch (err) {
-          console.error("Fallback copy failed:", err);
-        }
-      }
-      if (ok) {
-        toast({
-          title: `${label}已複製！`,
-          description: "已複製到您的剪貼簿。",
-          variant: "success",
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "複製失敗",
-          description: "抱歉，無法自動複製。請手動選取複製。",
+  // 結果處理：成功 → 加入歷史 + scroll；錯誤 → toast；fieldErrors → form.setError
+  useEffect(() => {
+    if (state?.reply) {
+      setGeneratedReply(state.reply);
+      const formData = form.getValues();
+      if (formData.scenario && formData.parentMessage) {
+        addHistory({
+          scenario: formData.scenario,
+          scenarioLabel: getScenarioLabel(formData.scenario),
+          parentMessage: formData.parentMessage,
+          reply: state.reply,
         });
       }
-    },
-    [toast],
-  );
+      toast({
+        title: "回覆已產生！",
+        description: "小幫手已建議一個回覆，並自動存入歷史紀錄。",
+        variant: "success",
+      });
+      setTimeout(() => {
+        replyCardRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
+    }
+    if (state?.error && !state?.fieldErrors) {
+      toast({
+        variant: "destructive",
+        title: "產生回覆時發生錯誤",
+        description: state.error,
+      });
+    }
+    if (state?.fieldErrors?.scenario) {
+      form.setError("scenario", {
+        type: "server",
+        message: state.fieldErrors.scenario[0],
+      });
+    }
+    if (state?.fieldErrors?.parentMessage) {
+      form.setError("parentMessage", {
+        type: "server",
+        message: state.fieldErrors.parentMessage[0],
+      });
+    }
+  }, [state, toast, form, addHistory]);
 
-  // 套用歷史紀錄到表單
+  const handleCopyReply = useCallback(() => {
+    if (generatedReply) void copyToClipboard(generatedReply);
+  }, [generatedReply, copyToClipboard]);
+
   const handleApplyHistory = useCallback(
     (entry: HistoryEntry) => {
       form.reset({
@@ -189,7 +164,6 @@ export function ReplyGeneratorForm() {
         parentMessage: entry.parentMessage,
       });
       setGeneratedReply(entry.reply);
-      setProgress(0);
       setState({});
       toast({
         title: "已套回表單",
@@ -206,91 +180,29 @@ export function ReplyGeneratorForm() {
     [form, toast],
   );
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout | undefined;
-    const isActive = isTransitionPending;
+  const handleResetForm = useCallback(() => {
+    form.reset({ scenario: "", parentMessage: "" });
+    setGeneratedReply(undefined);
+    setState({});
+    toast({
+      title: "已重設",
+      description: "表單已清空，可開始新的回覆草稿。",
+    });
+  }, [form, toast]);
 
-    if (isActive && !generatedReply) {
-      setProgress(10);
-      let currentProgress = 10;
-      timer = setInterval(() => {
-        currentProgress += Math.floor(Math.random() * 10) + 5;
-        if (currentProgress >= 95) {
-          setProgress(95);
-          clearInterval(timer);
-        } else {
-          setProgress(currentProgress);
-        }
-      }, 400);
-    } else {
-      clearInterval(timer);
-      if (generatedReply) {
-        setProgress(100);
-        setTimeout(() => {
-          setProgress(0); 
-        }, 500);
-      } else if (!isActive) {
-        setProgress(0);
-      }
-    }
-
-    return () => {
-      clearInterval(timer);
-    };
-  }, [isTransitionPending, generatedReply]);
-
-  useEffect(() => {
-    if (state?.reply) {
-      setGeneratedReply(state.reply);
-      // 自動加入歷史紀錄
-      const formData = form.getValues();
-      if (formData.scenario && formData.parentMessage) {
-        const label =
-          scenarios.find((s) => s.value === formData.scenario)?.label ??
-          formData.scenario;
-        addHistory({
-          scenario: formData.scenario,
-          scenarioLabel: label,
-          parentMessage: formData.parentMessage,
-          reply: state.reply,
-        });
-      }
-      toast({
-        title: "回覆已產生！",
-        description: "小幫手已建議一個回覆，並自動存入歷史紀錄。",
-        variant: "success",
-      });
-      setTimeout(() => {
-        replyCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
-    }
-    if (state?.error && !state?.fieldErrors) {
-      toast({
-        variant: "destructive",
-        title: "產生回覆時發生錯誤",
-        description: state.error,
-      });
-    }
-     if (state?.fieldErrors?.scenario) {
-      form.setError("scenario", { type: "server", message: state.fieldErrors.scenario[0] });
-    }
-    if (state?.fieldErrors?.parentMessage) {
-      form.setError("parentMessage", { type: "server", message: state.fieldErrors.parentMessage[0] });
-    }
-  }, [state, toast, form, addHistory]);
-
-
-  const handleCopyReply = useCallback(() => {
-    if (generatedReply) void copyTextToClipboard(generatedReply);
-  }, [generatedReply, copyTextToClipboard]);
-
-  const isCurrentlyPending = isTransitionPending;
+  const handleSubmit = (data: FormSchemaType) => {
+    setGeneratedReply(undefined);
+    setState({});
+    startTransition(async () => {
+      const result = await generateReply(data);
+      setState(result);
+    });
+  };
 
   return (
     <div className="w-full max-w-2xl mx-auto">
       <Card className="shadow-xl bg-card">
         <CardHeader className="text-center bg-primary/5 p-6 relative">
-          {/* 歷史紀錄抽屜按鈕（hydrated 後才顯示，避免 SSR 計數抖動） */}
           {historyHydrated && (
             <div className="absolute top-3 right-3">
               <HistoryPanel
@@ -299,13 +211,15 @@ export function ReplyGeneratorForm() {
                 onApply={handleApplyHistory}
                 onRemove={removeHistory}
                 onClear={clearHistory}
-                onCopy={(text) => void copyTextToClipboard(text)}
+                onCopy={(text) => void copyToClipboard(text)}
               />
             </div>
           )}
           <div className="flex items-center justify-center mb-2">
             <BotMessageSquare className="h-10 w-10 text-primary mr-3" />
-            <CardTitle className="text-3xl md:text-4xl font-bold tracking-tight text-primary">教師回應訊息建議小幫手</CardTitle>
+            <CardTitle className="text-3xl md:text-4xl font-bold tracking-tight text-primary">
+              教師回應訊息建議小幫手
+            </CardTitle>
           </div>
           <CardDescription className="text-base md:text-lg text-muted-foreground/90 mt-1">
             為家長訊息獲取小幫手支援的同理心與專業回覆建議。
@@ -315,64 +229,50 @@ export function ReplyGeneratorForm() {
           <Form {...form}>
             <form
               className="space-y-8"
-              onSubmit={(evt) => {
-                evt.preventDefault();
-                form.handleSubmit((data) => {
-                  setGeneratedReply(undefined);
-                  setProgress(0);
-                  setState({});
-                  startTransition(async () => {
-                    const result = await generateReply({
-                      scenario: data.scenario,
-                      parentMessage: data.parentMessage,
-                    });
-                    setState(result);
-                  });
-                })();
-              }}>
+              onSubmit={(e) => {
+                e.preventDefault();
+                form.handleSubmit(handleSubmit)();
+              }}
+            >
               <FormField
                 control={form.control}
                 name="scenario"
                 render={({ field }) => {
-                  const selectedScenarioValue = field.value;
-                  const selectedScenarioIndex = scenarios.findIndex(s => s.value === selectedScenarioValue);
-
-                  let triggerStyleClasses = "w-full";
-                  if (selectedScenarioValue && selectedScenarioIndex !== -1) {
-                    triggerStyleClasses = `w-full ${optionColors[selectedScenarioIndex % optionColors.length]} bg-gradient-to-r from-pink-100 via-purple-100 to-indigo-100 dark:from-pink-900/70 dark:via-purple-900/70 dark:to-indigo-900/70 font-medium`;
-                  } else {
-                     triggerStyleClasses = "w-full bg-background"; 
-                  }
-
+                  const idx = SCENARIOS.findIndex((s) => s.value === field.value);
+                  const triggerCls =
+                    field.value && idx !== -1
+                      ? `w-full ${OPTION_COLORS[idx % OPTION_COLORS.length]} bg-gradient-to-r from-pink-100 via-purple-100 to-indigo-100 dark:from-pink-900/70 dark:via-purple-900/70 dark:to-indigo-900/70 font-medium`
+                      : "w-full bg-background";
                   return (
                     <FormItem>
-                      <FormLabel className="inline-block px-3 py-1.5 text-sm font-semibold text-white bg-gradient-to-r from-sky-500 to-indigo-500 rounded-lg shadow-md border border-indigo-600/50">選擇情境</FormLabel>
+                      <FormLabel className="inline-block px-3 py-1.5 text-sm font-semibold text-white bg-gradient-to-r from-sky-500 to-indigo-500 rounded-lg shadow-md border border-indigo-600/50">
+                        選擇情境
+                      </FormLabel>
                       <Select
                         open={isScenarioSelectOpen}
                         onOpenChange={setIsScenarioSelectOpen}
-                        onValueChange={(value) => {
-                          field.onChange(value);
-                        }}
-                        value={field.value || undefined} 
+                        onValueChange={field.onChange}
+                        value={field.value || undefined}
                       >
                         <FormControl>
-                          <SelectTrigger className={triggerStyleClasses}>
+                          <SelectTrigger className={triggerCls}>
                             <SelectValue placeholder="選擇一個常見情況" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="bg-gradient-to-r from-pink-300 via-purple-300 to-indigo-400">
-                          {scenarios.map((s, index) => (
+                          {SCENARIOS.map((s, i) => (
                             <SelectItem
                               key={s.value}
                               value={s.value}
-                              className={`${optionColors[index % optionColors.length]} p-2 rounded-md my-0.5 mx-1 bg-white/80 dark:bg-neutral-800/80 hover:bg-white/95 dark:hover:bg-neutral-900/90 font-medium`}>
+                              className={`${OPTION_COLORS[i % OPTION_COLORS.length]} p-2 rounded-md my-0.5 mx-1 bg-white/80 dark:bg-neutral-800/80 hover:bg-white/95 dark:hover:bg-neutral-900/90 font-medium`}
+                            >
                               {s.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        選擇最符合家長訊息的情境，有助於小幫手提供更精準的回覆建議。下拉式選單將提供多種情境選項，讓老師可以挑選到最合適的狀況，並連動小幫手產生回覆。
+                        選擇最符合家長訊息的情境，有助於小幫手提供更精準的回覆建議。
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -385,22 +285,17 @@ export function ReplyGeneratorForm() {
                 name="parentMessage"
                 render={({ field }) => {
                   const len = field.value?.length ?? 0;
-                  let hint: { text: string; tone: "muted" | "warn" | "good" } = {
-                    text: "您提供的上下文越多，小幫手的建議就會越好。",
-                    tone: "muted",
-                  };
-                  if (len === 0) {
-                    hint = { text: "您提供的上下文越多，小幫手的建議就會越好。", tone: "muted" };
-                  } else if (len < 10) {
-                    hint = { text: `${len} 字元 — 至少需要 10 個字元`, tone: "warn" };
-                  } else if (len < 50) {
-                    hint = { text: `${len} 字元 — 建議補到 50 字以獲得更佳結果`, tone: "warn" };
-                  } else if (len > 1500) {
-                    hint = { text: `${len} 字元 — 訊息較長，AI 處理時間可能延長`, tone: "warn" };
-                  } else {
-                    hint = { text: `${len} 字元 — 內容充足，可獲得高品質建議 ✓`, tone: "good" };
-                  }
-                  const toneClass =
+                  const hint =
+                    len === 0
+                      ? { text: "您提供的上下文越多，小幫手的建議就會越好。", tone: "muted" as const }
+                      : len < 10
+                        ? { text: `${len} 字元 — 至少需要 10 個字元`, tone: "warn" as const }
+                        : len < 50
+                          ? { text: `${len} 字元 — 建議補到 50 字以獲得更佳結果`, tone: "warn" as const }
+                          : len > 1500
+                            ? { text: `${len} 字元 — 訊息較長，AI 處理時間可能延長`, tone: "warn" as const }
+                            : { text: `${len} 字元 — 內容充足，可獲得高品質建議 ✓`, tone: "good" as const };
+                  const toneCls =
                     hint.tone === "good"
                       ? "text-emerald-600 dark:text-emerald-400 font-medium"
                       : hint.tone === "warn"
@@ -408,7 +303,9 @@ export function ReplyGeneratorForm() {
                         : "text-muted-foreground";
                   return (
                     <FormItem>
-                      <FormLabel className="inline-block px-3 py-1.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg shadow-md border border-teal-600/50">家長訊息or陳述狀況</FormLabel>
+                      <FormLabel className="inline-block px-3 py-1.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg shadow-md border border-teal-600/50">
+                        家長訊息or陳述狀況
+                      </FormLabel>
                       <FormControl>
                         <Textarea
                           placeholder="在此貼上家長的訊息，或簡要描述情況..."
@@ -417,32 +314,26 @@ export function ReplyGeneratorForm() {
                           className="mt-1 block w-full rounded-md shadow-sm p-3 bg-input text-foreground focus:ring-2 focus:ring-accent focus:border-accent hover:shadow-lg transition-all duration-300 ease-in-out placeholder-muted-foreground"
                         />
                       </FormControl>
-                      <FormDescription className={toneClass}>{hint.text}</FormDescription>
+                      <FormDescription className={toneCls}>
+                        {hint.text}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   );
                 }}
               />
+
               <div className="space-y-2">
-                {isCurrentlyPending && !generatedReply && progress > 0 && (
+                {isPending && !generatedReply && progress > 0 && (
                   <Progress value={progress} className="w-full h-3" />
                 )}
                 <CardFooter className="flex flex-col sm:flex-row justify-center items-center gap-3 p-0 pt-2">
-                  <SubmitButton isPending={isCurrentlyPending} />
+                  <SubmitButton isPending={isPending} />
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={isCurrentlyPending}
-                    onClick={() => {
-                      form.reset({ scenario: "", parentMessage: "" });
-                      setGeneratedReply(undefined);
-                      setProgress(0);
-                      setState({});
-                      toast({
-                        title: "已重設",
-                        description: "表單已清空，可開始新的回覆草稿。",
-                      });
-                    }}
+                    disabled={isPending}
+                    onClick={handleResetForm}
                     className="w-full sm:w-auto transform transition-transform duration-300 ease-in-out hover:scale-105 active:scale-100"
                   >
                     <RefreshCw className="mr-2 h-4 w-4" />
@@ -455,24 +346,9 @@ export function ReplyGeneratorForm() {
         </CardContent>
       </Card>
 
-      {isCurrentlyPending && !generatedReply && (
-         <Card className="mt-6 shadow-xl bg-card">
-          <CardHeader>
-            <CardTitle className="text-xl flex items-center text-foreground">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              正在產生建議回覆...
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-4">
-            <Skeleton className="h-4 w-3/4 bg-muted/50" />
-            <Skeleton className="h-4 w-full bg-muted/50" />
-            <Skeleton className="h-4 w-full bg-muted/50" />
-            <Skeleton className="h-4 w-1/2 bg-muted/50" />
-          </CardContent>
-        </Card>
-      )}
+      {isPending && !generatedReply && <LoadingCard />}
 
-      {state?.error && !state.fieldErrors && !isCurrentlyPending && (
+      {state?.error && !state.fieldErrors && !isPending && (
         <Alert variant="destructive" className="mt-6">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>錯誤</AlertTitle>
@@ -480,45 +356,13 @@ export function ReplyGeneratorForm() {
         </Alert>
       )}
 
-      {generatedReply && !isCurrentlyPending && (
-        <Card ref={replyCardRef} className="mt-6 shadow-xl bg-card">
-          <CardHeader className="text-center p-4 rounded-t-lg bg-gradient-to-br from-primary/20 via-accent/15 to-secondary/20 border-b border-border shadow-sm">
-            <CardTitle className="text-2xl font-bold text-primary tracking-tight">
-              建議回覆
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-             <div
-              className={cn(
-                "w-full rounded-md shadow-sm p-3 border text-sm",
-                "bg-gradient-to-br from-primary/15 via-background to-accent/15 dark:from-primary/30 dark:via-background/20 dark:to-accent/30",
-                "text-foreground border-border",
-                "transition-all duration-300 ease-in-out leading-relaxed",
-                "generated-reply-textarea min-h-[160px]" 
-              )}
-            >
-              <ReactMarkdown
-                components={{
-                  // Optional: Add custom renderers here if needed
-                  // e.g., p: ({node, ...props}) => <p className="my-2" {...props} />
-                }}
-              >
-                {generatedReply}
-              </ReactMarkdown>
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-end">
-            <Button
-              onClick={handleCopyReply}
-              variant="default"
-              className={`transform transition-transform duration-300 ease-in-out hover:scale-110 active:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/80`}>
-              <Copy className="mr-2 h-4 w-4" />
-              複製回覆
-            </Button>
-          </CardFooter>
-        </Card>
+      {generatedReply && !isPending && (
+        <GeneratedReplyCard
+          ref={replyCardRef}
+          reply={generatedReply}
+          onCopy={handleCopyReply}
+        />
       )}
     </div>
   );
 }
-
