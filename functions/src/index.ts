@@ -2,6 +2,8 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { setGlobalOptions } from "firebase-functions/v2";
 import { logger } from "firebase-functions";
+import { getApps, initializeApp } from "firebase-admin/app";
+import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
 import { genkit, z } from "genkit";
 import { googleAI } from "@genkit-ai/googleai";
 
@@ -9,6 +11,48 @@ setGlobalOptions({ region: "asia-east1", maxInstances: 10 });
 
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 const TURNSTILE_SECRET_KEY = defineSecret("TURNSTILE_SECRET_KEY");
+const ADMIN_PASSWORD = defineSecret("ADMIN_PASSWORD");
+
+// Initialize firebase-admin once（Functions 內 cold start 時跑一次）
+if (getApps().length === 0) initializeApp();
+const db = getFirestore();
+
+// 用今日（UTC+8 / Asia/Taipei 約近台灣日期）作為 doc id
+function getTaipeiDateKey(d: Date = new Date()): string {
+  // 用 ISO + offset 8 hours 換成台北日期
+  const taipei = new Date(d.getTime() + 8 * 3600 * 1000);
+  return taipei.toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+interface LogStatsInput {
+  scenario: string;
+  mode: "generate" | "refine";
+  replyLength: number;
+  hasImage: boolean;
+  hasAdvanced: boolean;
+}
+
+async function logStats(opts: LogStatsInput): Promise<void> {
+  const dateKey = getTaipeiDateKey();
+  const ref = db.collection("stats_daily").doc(dateKey);
+  // 步驟 1: top-level 欄位 set merge（首次自動建 doc）
+  await ref.set(
+    {
+      date: dateKey,
+      count: FieldValue.increment(1),
+      totalReplyChars: FieldValue.increment(opts.replyLength),
+      withImageCount: FieldValue.increment(opts.hasImage ? 1 : 0),
+      withAdvancedCount: FieldValue.increment(opts.hasAdvanced ? 1 : 0),
+      updatedAt: Timestamp.now(),
+    },
+    { merge: true },
+  );
+  // 步驟 2: dot-notation 對巢狀欄位增量
+  await ref.update({
+    [`byScenario.${opts.scenario}`]: FieldValue.increment(1),
+    [`byMode.${opts.mode}`]: FieldValue.increment(1),
+  });
+}
 
 const TURNSTILE_VERIFY_URL =
   "https://challenges.cloudflare.com/turnstile/v0/siteverify";
@@ -299,6 +343,18 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
         : (promptParts[0] as { text: string }).text;
 
       const text = await generateWithRetry(ai, prompt, 2);
+
+      // Fire-and-forget 寫統計（不 await 避免拖慢回覆，失敗不影響主流程）
+      logStats({
+        scenario,
+        mode: refineInstruction ? "refine" : "generate",
+        replyLength: text.length,
+        hasImage: !!imageDataUrl,
+        hasAdvanced: !!(schoolName || teacherName || studentGrade || notes),
+      }).catch((err) => {
+        logger.warn("stats log failed (non-fatal)", err);
+      });
+
       return { reply: text };
     } catch (err) {
       logger.error("generateParentReply failed", err);
@@ -315,5 +371,120 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
 
       throw new HttpsError("internal", `小幫手回覆失敗：${msg}`);
     }
+  },
+);
+
+// ============================================================
+// getStats — 統計儀表板用，需密碼驗證
+// ============================================================
+
+const StatsRequestSchema = z.object({
+  password: z.string().min(1),
+});
+
+interface DailyStats {
+  date: string;
+  count: number;
+  totalReplyChars?: number;
+  withImageCount?: number;
+  withAdvancedCount?: number;
+  byScenario?: Record<string, number>;
+  byMode?: Record<string, number>;
+}
+
+interface StatsResponse {
+  daily: DailyStats[];
+  summary: {
+    totalCount: number;
+    activeDays: number;
+    avgReplyChars: number;
+    withImagePercent: number;
+    withAdvancedPercent: number;
+    topScenario: { name: string; count: number } | null;
+  };
+  generatedAt: string;
+}
+
+export const getStats = onCall<{ password: string }, Promise<StatsResponse>>(
+  {
+    secrets: [ADMIN_PASSWORD],
+    cors: [
+      /^https:\/\/cagoooo\.github\.io$/,
+      /^http:\/\/localhost(:\d+)?$/,
+    ],
+  },
+  async (request) => {
+    const parsed = StatsRequestSchema.safeParse(request.data);
+    if (!parsed.success) {
+      throw new HttpsError("invalid-argument", "缺少密碼欄位。");
+    }
+    const expected = ADMIN_PASSWORD.value();
+    if (!expected || expected === "PLACEHOLDER_CHANGE_ME") {
+      throw new HttpsError(
+        "failed-precondition",
+        "ADMIN_PASSWORD 尚未在 Secret Manager 設定。請管理員執行 `echo \"<your-password>\" | gcloud secrets versions add ADMIN_PASSWORD --data-file=-`。",
+      );
+    }
+    if (parsed.data.password !== expected) {
+      throw new HttpsError("permission-denied", "密碼錯誤。");
+    }
+
+    // 撈最近 30 天 daily stats
+    const snapshot = await db
+      .collection("stats_daily")
+      .orderBy("date", "desc")
+      .limit(30)
+      .get();
+
+    const daily: DailyStats[] = snapshot.docs.map((d) => {
+      const data = d.data();
+      return {
+        date: data.date,
+        count: data.count ?? 0,
+        totalReplyChars: data.totalReplyChars ?? 0,
+        withImageCount: data.withImageCount ?? 0,
+        withAdvancedCount: data.withAdvancedCount ?? 0,
+        byScenario: data.byScenario ?? {},
+        byMode: data.byMode ?? {},
+      };
+    });
+
+    // Aggregate summary
+    let totalCount = 0;
+    let totalReplyChars = 0;
+    let totalImage = 0;
+    let totalAdvanced = 0;
+    const scenarioTotals: Record<string, number> = {};
+    for (const d of daily) {
+      totalCount += d.count;
+      totalReplyChars += d.totalReplyChars ?? 0;
+      totalImage += d.withImageCount ?? 0;
+      totalAdvanced += d.withAdvancedCount ?? 0;
+      for (const [k, v] of Object.entries(d.byScenario ?? {})) {
+        scenarioTotals[k] = (scenarioTotals[k] ?? 0) + v;
+      }
+    }
+    let topScenario: { name: string; count: number } | null = null;
+    for (const [name, count] of Object.entries(scenarioTotals)) {
+      if (!topScenario || count > topScenario.count) {
+        topScenario = { name, count };
+      }
+    }
+
+    return {
+      daily,
+      summary: {
+        totalCount,
+        activeDays: daily.length,
+        avgReplyChars:
+          totalCount > 0 ? Math.round(totalReplyChars / totalCount) : 0,
+        withImagePercent:
+          totalCount > 0 ? Math.round((totalImage / totalCount) * 100) : 0,
+        withAdvancedPercent:
+          totalCount > 0 ? Math.round((totalAdvanced / totalCount) * 100) : 0,
+        topScenario,
+      },
+      generatedAt: new Date().toISOString(),
+    };
   },
 );
