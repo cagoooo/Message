@@ -34,7 +34,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { BotMessageSquare, Sparkles, Copy, Loader2, AlertTriangle } from "lucide-react";
+import { BotMessageSquare, Sparkles, Copy, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
@@ -345,30 +345,71 @@ export function ReplyGeneratorForm() {
               <FormField
                 control={form.control}
                 name="parentMessage"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="inline-block px-3 py-1.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg shadow-md border border-teal-600/50">家長訊息or陳述狀況</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="在此貼上家長的訊息，或簡要描述情況..."
-                        rows={6}
-                        {...field}
-                        className="mt-1 block w-full rounded-md shadow-sm p-3 bg-input text-foreground focus:ring-2 focus:ring-accent focus:border-accent hover:shadow-lg transition-all duration-300 ease-in-out placeholder-muted-foreground"
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      您提供的上下文越多，小幫手的建議就會越好。
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const len = field.value?.length ?? 0;
+                  let hint: { text: string; tone: "muted" | "warn" | "good" } = {
+                    text: "您提供的上下文越多，小幫手的建議就會越好。",
+                    tone: "muted",
+                  };
+                  if (len === 0) {
+                    hint = { text: "您提供的上下文越多，小幫手的建議就會越好。", tone: "muted" };
+                  } else if (len < 10) {
+                    hint = { text: `${len} 字元 — 至少需要 10 個字元`, tone: "warn" };
+                  } else if (len < 50) {
+                    hint = { text: `${len} 字元 — 建議補到 50 字以獲得更佳結果`, tone: "warn" };
+                  } else if (len > 1500) {
+                    hint = { text: `${len} 字元 — 訊息較長，AI 處理時間可能延長`, tone: "warn" };
+                  } else {
+                    hint = { text: `${len} 字元 — 內容充足，可獲得高品質建議 ✓`, tone: "good" };
+                  }
+                  const toneClass =
+                    hint.tone === "good"
+                      ? "text-emerald-600 dark:text-emerald-400 font-medium"
+                      : hint.tone === "warn"
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-muted-foreground";
+                  return (
+                    <FormItem>
+                      <FormLabel className="inline-block px-3 py-1.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg shadow-md border border-teal-600/50">家長訊息or陳述狀況</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="在此貼上家長的訊息，或簡要描述情況..."
+                          rows={6}
+                          {...field}
+                          className="mt-1 block w-full rounded-md shadow-sm p-3 bg-input text-foreground focus:ring-2 focus:ring-accent focus:border-accent hover:shadow-lg transition-all duration-300 ease-in-out placeholder-muted-foreground"
+                        />
+                      </FormControl>
+                      <FormDescription className={toneClass}>{hint.text}</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
-              <div className="space-y-2"> 
+              <div className="space-y-2">
                 {isCurrentlyPending && !generatedReply && progress > 0 && (
-                    <Progress value={progress} className="w-full h-3" />
+                  <Progress value={progress} className="w-full h-3" />
                 )}
-                <CardFooter className="flex justify-center p-0 pt-2">
-                    <SubmitButton isPending={isCurrentlyPending} />
+                <CardFooter className="flex flex-col sm:flex-row justify-center items-center gap-3 p-0 pt-2">
+                  <SubmitButton isPending={isCurrentlyPending} />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isCurrentlyPending}
+                    onClick={() => {
+                      form.reset({ scenario: "", parentMessage: "" });
+                      setGeneratedReply(undefined);
+                      setProgress(0);
+                      setState({});
+                      toast({
+                        title: "已重設",
+                        description: "表單已清空，可開始新的回覆草稿。",
+                      });
+                    }}
+                    className="w-full sm:w-auto transform transition-transform duration-300 ease-in-out hover:scale-105 active:scale-100"
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    重設表單
+                  </Button>
                 </CardFooter>
               </div>
             </form>

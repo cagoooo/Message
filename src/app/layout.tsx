@@ -93,6 +93,34 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+// JSON-LD 結構化資料 — 讓 Google / Bing 能正確分類這是免費教育類 Web App
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: siteTitle,
+  alternateName: "教師回應訊息建議小幫手",
+  description: siteDescription,
+  url: siteUrl,
+  applicationCategory: "EducationalApplication",
+  operatingSystem: "Any",
+  inLanguage: "zh-Hant",
+  isAccessibleForFree: true,
+  offers: { "@type": "Offer", price: "0", priceCurrency: "TWD" },
+  creator: {
+    "@type": "Person",
+    name: "阿凱老師",
+    affiliation: {
+      "@type": "EducationalOrganization",
+      name: "桃園市石門國小資訊組",
+      url: "https://www.smes.tyc.edu.tw/",
+    },
+  },
+  audience: {
+    "@type": "EducationalAudience",
+    educationalRole: "teacher",
+  },
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -100,6 +128,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-Hant" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <head>
+        <script
+          type="application/ld+json"
+          // 安全：jsonLd 是上面靜態定義的常數，沒有外來輸入
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body className={`flex flex-col min-h-screen font-sans antialiased bg-background`}>
         {children}
         <Toaster />
