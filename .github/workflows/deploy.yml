@@ -28,7 +28,10 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        # 用 install 而非 ci：lock 在 Windows 產出時不會記錄 Linux 平台
+        # 的 native binary (sharp / @napi-rs/canvas)，CI 的 ubuntu runner
+        # 跑 npm ci 會 fail。npm install 會自動補齊缺的 platform deps。
+        run: npm install --no-audit --no-fund --prefer-offline
 
       - name: Build static site
         env:
