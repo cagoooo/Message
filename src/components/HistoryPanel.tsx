@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   Sheet,
   SheetContent,
@@ -86,12 +87,28 @@ export function HistoryPanel({
         ) : (
           <>
             <ScrollArea className="flex-1 -mr-3 pr-3">
-              <div className="space-y-3 pb-2">
-                {items.map((entry) => (
-                  <article
-                    key={entry.id}
-                    className="border border-border rounded-lg p-3 space-y-2 bg-card hover:shadow-md transition-shadow"
-                  >
+              <motion.div
+                className="space-y-3 pb-2"
+                initial="hidden"
+                animate="show"
+                variants={{
+                  hidden: {},
+                  show: { transition: { staggerChildren: 0.04 } },
+                }}
+              >
+                <AnimatePresence initial={false}>
+                  {items.map((entry) => (
+                    <motion.article
+                      key={entry.id}
+                      layout
+                      variants={{
+                        hidden: { opacity: 0, x: 20 },
+                        show: { opacity: 1, x: 0 },
+                      }}
+                      exit={{ opacity: 0, x: -20, height: 0, marginTop: 0, marginBottom: 0, transition: { duration: 0.2 } }}
+                      transition={{ type: "spring", stiffness: 280, damping: 26 }}
+                      className="border border-border rounded-lg p-3 space-y-2 bg-card hover:shadow-md transition-shadow overflow-hidden"
+                    >
                     <header className="flex items-center justify-between text-xs">
                       <span className="bg-secondary/60 px-2 py-1 rounded font-medium text-secondary-foreground">
                         {entry.scenarioLabel}
@@ -144,9 +161,10 @@ export function HistoryPanel({
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
-                  </article>
-                ))}
-              </div>
+                    </motion.article>
+                  ))}
+                </AnimatePresence>
+              </motion.div>
             </ScrollArea>
             <div className="border-t border-border pt-3 mt-2">
               <Button
