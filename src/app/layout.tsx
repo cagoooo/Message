@@ -9,6 +9,8 @@ const siteTitle = "教師小幫手";
 const siteDescription = "為親師溝通提供小幫手支援的回覆建議。";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://cagoooo.github.io/Message";
 const siteImage = `${siteUrl}/og-image.png`;
+// 必須與 next.config.ts 的 basePath 同步（GitHub Pages 部署在 /Message/ 子路徑）
+const basePath = process.env.NODE_ENV === "production" ? "/Message" : "";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -30,7 +32,7 @@ export const metadata: Metadata = {
   authors: [{ name: "阿凱老師", url: "https://www.smes.tyc.edu.tw/" }],
   creator: "阿凱老師",
   publisher: "桃園市石門國小資訊組",
-  icons: { icon: "/favicon.ico" },
+  icons: { icon: `${basePath}/favicon.ico` },
   openGraph: {
     title: siteTitle,
     description: siteDescription,
