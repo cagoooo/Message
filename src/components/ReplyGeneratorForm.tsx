@@ -61,7 +61,7 @@ const formSchema = z.object({
   scenario: z
     .string({ required_error: "請選擇一個情境。" })
     .min(1, "必須填寫情境。"),
-  parentMessage: z.string().min(10, { message: "家長訊息至少需10個字元。" }),
+  parentMessage: z.string().min(5, { message: "家長訊息至少需 5 個字元。" }),
 });
 type FormSchemaType = z.infer<typeof formSchema>;
 
@@ -309,13 +309,11 @@ export function ReplyGeneratorForm() {
                   const hint =
                     len === 0
                       ? { text: "您提供的上下文越多，小幫手的建議就會越好。", tone: "muted" as const }
-                      : len < 10
-                        ? { text: `${len} 字元 — 至少需要 10 個字元`, tone: "warn" as const }
-                        : len < 50
-                          ? { text: `${len} 字元 — 建議補到 50 字以獲得更佳結果`, tone: "warn" as const }
-                          : len > 1500
-                            ? { text: `${len} 字元 — 訊息較長，AI 處理時間可能延長`, tone: "warn" as const }
-                            : { text: `${len} 字元 — 內容充足，可獲得高品質建議 ✓`, tone: "good" as const };
+                      : len < 5
+                        ? { text: `${len} 字元 — 至少需要 5 個字元`, tone: "warn" as const }
+                        : len > 1500
+                          ? { text: `${len} 字元 — 訊息較長，AI 處理時間可能延長`, tone: "warn" as const }
+                          : { text: `${len} 字元 — 可送出 ✓`, tone: "good" as const };
                   const toneCls =
                     hint.tone === "good"
                       ? "text-emerald-600 dark:text-emerald-400 font-medium"
