@@ -15,21 +15,17 @@
 |---|---|---|---|
 | 🔴 P0（部署前必修） | **5 / 5** | **100%** ✅ | 全部完工 |
 | 🟠 P1（兩週內修） | **7 / 8** | **87.5%** ✅ | 只有 Streaming 跳過 |
-| 🟡 P2（一個月內修） | 1.5 / 7 | 21% | **還可做 5.5 項** |
+| 🟡 P2（一個月內修） | **5 / 7** | **71%** ✅ | 又完成 4 項 |
 | 🟢 P3（有空再修） | 0 / 5 | 0% | **還可做 5 項** |
 
-### 還可選擇做的項目摘要（共 ~28 小時可選工時）
+### 還可選擇做的項目摘要（共 ~23 小時可選工時）
 
 | Pri | 項目 | 工時 | 難度 |
 |---|---|---|---|
 | ⏭ P1-7 | Streaming 回應 | 5h | ⭐⭐⭐⭐ |
-| ⏳ P2-1 | 一鍵分享 LINE | 20m | ⭐ |
 | ⏳ P2-2 | 自訂 Prompt 進階模式 | 2h | ⭐⭐ |
-| ⏳ P2-3 | 多輪 refine 回覆 | 3h | ⭐⭐⭐ |
 | ⏳ P2-4 | OCR 上傳對話截圖 | 4h | ⭐⭐⭐ |
 | ⏳ P2-5 | 多語系 (i18n) | 5h | ⭐⭐⭐ |
-| 🟡 P2-6 | PWA 離線可用 — install prompt | 30m | ⭐ |
-| ⏳ P2-7 | 個資警示 (PII detection) | 1.5h | ⭐⭐ |
 | ⏳ P3-1 | 動畫優化 (Framer Motion) | 3h | ⭐⭐ |
 | ⏳ P3-2 | 統計儀表板（管理員用） | 4h | ⭐⭐⭐ |
 | ⏳ P3-3 | 模型切換（Flash / Pro） | 30m | ⭐ |
@@ -212,24 +208,12 @@ export const generateParentReplyStream = onRequest({
 
 ---
 
-## 🟡 P2 — 一個月內處理（剩 5.5 項可選）
+## 🟡 P2 — 一個月內處理（剩 2 項可選）
 
-### ⏳ P2-1. 「一鍵分享 LINE」功能
+### ✅ P2-1. 「一鍵分享 LINE」功能 — 完成
 
-**情境**：老師看到結果想直接分享給其他老師參考。
-
-**做法**：在「複製回覆」旁加：
-
-```tsx
-<Button onClick={() => {
-  const url = `https://line.me/R/msg/text/?${encodeURIComponent(generatedReply)}`;
-  window.open(url, '_blank');
-}}>
-  <ShareIcon /> 分享到 LINE
-</Button>
-```
-
-**預估工時**：20 分鐘 ｜ **難度**：⭐
+**Commit**：[Batch 7](https://github.com/cagoooo/Message/commit/a44cf8c)
+**實際做法**：[GeneratedReplyCard.tsx](../src/components/reply-generator/GeneratedReplyCard.tsx) 加「分享到 LINE」按鈕，LINE 品牌綠 #06C755 配色，點下開新分頁帶 reply 文字到 LINE 「選擇對象」介面。
 
 ---
 
@@ -258,19 +242,14 @@ prompt: `你是一位老師（${teacherName}）的教師助理...
 
 ---
 
-### ⏳ P2-3. 多輪對話（refine 回覆）
+### ✅ P2-3. 多輪對話（refine 回覆）— 完成
 
-**情境**：AI 生成的初稿想說「再溫和一點」「再短一點」「換個開頭」。
-
-**做法**：回覆卡片加幾個快速按鈕：
-
-```
-[📝 再正式一點] [💝 再溫暖一點] [✂️ 縮短] [📋 加更多細節]
-```
-
-點下後重新呼叫 AI，附上原訊息 + 修改指令。
-
-**預估工時**：3 小時 ｜ **難度**：⭐⭐⭐
+**Commit**：[Batch 8](https://github.com/cagoooo/Message/commit/79b07c6)
+**實際做法**：
+- Function 端新增 `REFINE_PROMPT` template，輸入加 `refineInstruction` / `previousReply` 兩個 optional 欄位，`buildPrompt()` 自動切換初次 / refine 模式
+- GeneratedReplyCard 加 4 個 refine 按鈕：再溫和（粉）/ 再正式（藍）/ 縮短（琥珀）/ 加更多細節（綠），各帶情境配色與 lucide icon
+- ReplyGeneratorForm `handleRefine()` 把當下 form values + token + 舊 reply 送回 callable，refine 也走 Turnstile verify（防腳本濫用）
+- refine 進行中：reply 半透明 + button spinning loader，不顯示新 LoadingCard 避免 stack 兩張卡片
 
 ---
 
@@ -304,51 +283,26 @@ const result = await ai.generate({ prompt: [..., imagePart] });
 
 ---
 
-### 🟡 P2-6. PWA 離線可用 — **部分完成**
+### ✅ P2-6. PWA 離線可用 — 完成
 
-**已做**：
-- `public/manifest.json` — 完整 PWA manifest（name / short_name / icons / theme_color / display: standalone）
-- `public/sw.template.js` + 自動產出 `sw.js` — Service Worker network-first HTML / cache-first 靜態
-- `src/components/ServiceWorkerRegister.tsx` — 註冊 SW + 每 5 分鐘輪詢 version.json + 新版 toast 提示
-- `scripts/write-version.mjs` — prebuild 自動產 version.json + 替換 sw.js 的 CACHE_VERSION
-
-**還沒做**：「Install prompt」UI — 主動偵測 `beforeinstallprompt` event 跳出「加到主螢幕」按鈕。
-
-**剩餘工時**：~30 分鐘 ｜ **難度**：⭐
-
-```tsx
-// 大致做法
-useEffect(() => {
-  const handler = (e: Event) => {
-    e.preventDefault();
-    setDeferredPrompt(e as BeforeInstallPromptEvent);
-  };
-  window.addEventListener("beforeinstallprompt", handler);
-  return () => window.removeEventListener("beforeinstallprompt", handler);
-}, []);
-```
+**Commits**：[SW + manifest](https://github.com/cagoooo/Message/commit/80aea1c) + [install prompt Batch 7](https://github.com/cagoooo/Message/commit/a44cf8c)
+**實際做法**：
+- `public/manifest.json` — 完整 PWA manifest
+- `public/sw.template.js` + `scripts/write-version.mjs` 自動產 sw.js + version.json
+- `src/components/ServiceWorkerRegister.tsx` — 註冊 SW + 5 分鐘輪詢 + 新版 toast
+- **新增** `src/components/InstallPrompt.tsx` — 監聽 `beforeinstallprompt` event，5 秒延遲後浮現「安裝到主畫面」小卡片
+- 已安裝（standalone）/ 「稍後」snooze 7 天 / iOS Safari → 自動隱藏
 
 ---
 
-### ⏳ P2-7. 個資警示
+### ✅ P2-7. 個資警示 — 完成
 
-**情境**：老師可能不小心把學生姓名、身分證字號貼進去 → 資料給 Google。
-
-**做法**：表單送出前用 regex 簡單檢查：
-
-```ts
-function detectPII(text: string): string[] {
-  const warnings = [];
-  if (/[A-Z][12]\d{8}/.test(text)) warnings.push("身分證字號");
-  if (/09\d{2}-?\d{6}/.test(text)) warnings.push("手機號碼");
-  if (/\d{3}-?\d{4}-?\d{4}-?\d{4}/.test(text)) warnings.push("信用卡號");
-  return warnings;
-}
-```
-
-→ 偵測到顯示確認對話框：「您的訊息包含 [身分證字號]，建議移除後再送出。是否繼續？」
-
-**預估工時**：1.5 小時 ｜ **難度**：⭐⭐
+**Commit**：[Batch 7](https://github.com/cagoooo/Message/commit/a44cf8c)
+**實際做法**：
+- `src/lib/pii-detector.ts` — regex 偵測 4 類台灣常見 PII：身分證字號、手機、信用卡、Email；含 `maskPII()` 工具
+- ReplyGeneratorForm 整合 AlertDialog：偵測到 → 跳對話框列出每類 PII（遮罩顯示）+ 「我已確認，繼續送出」/「取消，回去修改」二選一
+- 不阻擋（老師有判斷權），只警示
+- **單元測試**：[tests/lib/pii-detector.test.ts](../tests/lib/pii-detector.test.ts) 11 tests 覆蓋
 
 ---
 
@@ -433,12 +387,13 @@ function detectPII(text: string): string[] {
 
 ## 🎯 結語
 
-🎉 **P0 100%、P1 87.5% 完成，整個 App 已是生產就緒（production-ready）狀態。**
+🎉 **P0 100%、P1 87.5%、P2 71% 完成，整個 App 已是高完成度的生產級 PWA。**
 
 剩下的全是「**錦上添花**」，可以慢慢按需求挑選做：
-- 想先試最小投入：**P2-1 LINE 分享（20 分）+ P2-6 install prompt（30 分）+ P3-3 模型切換（30 分）** = 1.5 小時就能再加 3 個小亮點
-- 想做最有感的功能：**P2-3 多輪 refine（3h）+ P2-4 OCR 截圖（4h）** 都是體驗大幅提升
-- 想擴展為協作平台：**P3-5 雲端家長筆記（6h）** 是基石
+- 想先試最小投入：**P3-3 模型切換（30 分）** ＋ **P3-4 範本庫（2h）** ＝ 2.5 小時就能再加兩個小亮點
+- 想擴展功能性：**P2-2 自訂 Prompt（2h）+ P2-4 OCR 截圖（4h）** 體驗會大幅升級
+- 想擴展為協作平台：**P3-5 雲端家長筆記（6h）** 是基石（接 Firebase Auth）
+- 想加趣味度：**P3-1 動畫（3h）+ P3-2 儀表板（4h）**
 
 ---
 
