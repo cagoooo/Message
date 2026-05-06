@@ -8,11 +8,62 @@ import { googleAI } from "@genkit-ai/googleai";
 setGlobalOptions({ region: "asia-east1", maxInstances: 10 });
 
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+const TURNSTILE_SECRET_KEY = defineSecret("TURNSTILE_SECRET_KEY");
+
+const TURNSTILE_VERIFY_URL =
+  "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 const InputSchema = z.object({
   parentMessage: z.string().min(1, "parentMessage is required"),
   scenario: z.string().min(1, "scenario is required"),
+  turnstileToken: z.string().min(1, "turnstileToken is required"),
 });
+
+interface TurnstileVerifyResponse {
+  success: boolean;
+  "error-codes"?: string[];
+  challenge_ts?: string;
+  hostname?: string;
+}
+
+async function verifyTurnstile(token: string, remoteIp?: string): Promise<void> {
+  const body = new URLSearchParams({
+    secret: TURNSTILE_SECRET_KEY.value(),
+    response: token,
+  });
+  if (remoteIp) body.append("remoteip", remoteIp);
+
+  let resp: Response;
+  try {
+    resp = await fetch(TURNSTILE_VERIFY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+  } catch (err) {
+    logger.error("Turnstile verify network error", err);
+    throw new HttpsError(
+      "unavailable",
+      "驗證服務暫時無回應，請稍後重試。",
+    );
+  }
+
+  if (!resp.ok) {
+    logger.error("Turnstile verify HTTP error", { status: resp.status });
+    throw new HttpsError("unavailable", "驗證服務異常，請稍後重試。");
+  }
+
+  const data = (await resp.json()) as TurnstileVerifyResponse;
+  if (!data.success) {
+    logger.warn("Turnstile verification failed", {
+      errors: data["error-codes"],
+    });
+    throw new HttpsError(
+      "permission-denied",
+      "驗證失敗，請重新整理頁面後再試一次。",
+    );
+  }
+}
 
 const OutputSchema = z.object({
   reply: z.string(),
@@ -45,7 +96,7 @@ function getAi() {
 
 export const generateParentReply = onCall<Input, Promise<Output>>(
   {
-    secrets: [GEMINI_API_KEY],
+    secrets: [GEMINI_API_KEY, TURNSTILE_SECRET_KEY],
     cors: [
       /^https:\/\/cagoooo\.github\.io$/,
       /^http:\/\/localhost(:\d+)?$/,
@@ -59,7 +110,10 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
         parsed.error.errors.map((e) => e.message).join("; "),
       );
     }
-    const { parentMessage, scenario } = parsed.data;
+    const { parentMessage, scenario, turnstileToken } = parsed.data;
+
+    // 1. 先驗 Turnstile token —— 失敗就直接 throw，不浪費 Gemini quota
+    await verifyTurnstile(turnstileToken, request.rawRequest?.ip);
 
     try {
       const ai = getAi();

@@ -7,6 +7,7 @@ import { getFn } from "@/lib/firebase";
 const ReplySchema = z.object({
   scenario: z.string().min(1, "必須填寫情境。"),
   parentMessage: z.string().min(1, "家長訊息不能為空。"),
+  turnstileToken: z.string().min(1, "請先完成人機驗證。"),
 });
 
 export interface ActionResult {
@@ -15,12 +16,14 @@ export interface ActionResult {
   fieldErrors?: {
     scenario?: string[];
     parentMessage?: string[];
+    turnstileToken?: string[];
   };
 }
 
 export async function generateReply(input: {
   scenario: string;
   parentMessage: string;
+  turnstileToken: string;
 }): Promise<ActionResult> {
   const validated = ReplySchema.safeParse(input);
   if (!validated.success) {
@@ -32,7 +35,7 @@ export async function generateReply(input: {
 
   try {
     const callable = httpsCallable<
-      { scenario: string; parentMessage: string },
+      { scenario: string; parentMessage: string; turnstileToken: string },
       { reply: string }
     >(getFn(), "generateParentReply");
 

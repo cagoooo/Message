@@ -17,6 +17,10 @@ import {
   OPTION_COLORS,
   getScenarioLabel,
 } from "@/components/reply-generator/constants";
+import {
+  TurnstileWidget,
+  type TurnstileWidgetHandle,
+} from "@/components/reply-generator/TurnstileWidget";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -61,6 +65,8 @@ const formSchema = z.object({
 });
 type FormSchemaType = z.infer<typeof formSchema>;
 
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
 function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
     <Button
@@ -88,6 +94,8 @@ export function ReplyGeneratorForm() {
   const [isPending, startTransition] = useTransition();
   const [generatedReply, setGeneratedReply] = useState<string | undefined>();
   const [isScenarioSelectOpen, setIsScenarioSelectOpen] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string>("");
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const replyCardRef = useRef<HTMLDivElement>(null);
 
   const { toast } = useToast();
@@ -184,6 +192,8 @@ export function ReplyGeneratorForm() {
     form.reset({ scenario: "", parentMessage: "" });
     setGeneratedReply(undefined);
     setState({});
+    setTurnstileToken("");
+    turnstileRef.current?.reset();
     toast({
       title: "已重設",
       description: "表單已清空，可開始新的回覆草稿。",
@@ -191,11 +201,22 @@ export function ReplyGeneratorForm() {
   }, [form, toast]);
 
   const handleSubmit = (data: FormSchemaType) => {
+    if (!turnstileToken) {
+      toast({
+        variant: "destructive",
+        title: "請先完成人機驗證",
+        description: "請等待右側「我不是機器人」驗證完成後再送出。",
+      });
+      return;
+    }
     setGeneratedReply(undefined);
     setState({});
     startTransition(async () => {
-      const result = await generateReply(data);
+      const result = await generateReply({ ...data, turnstileToken });
       setState(result);
+      // 用過的 token 立即重置（單次有效）
+      turnstileRef.current?.reset();
+      setTurnstileToken("");
     });
   };
 
@@ -323,7 +344,23 @@ export function ReplyGeneratorForm() {
                 }}
               />
 
-              <div className="space-y-2">
+              <div className="space-y-3">
+                {/* Cloudflare Turnstile：保護 Gemini API quota 不被腳本攻擊耗用 */}
+                {TURNSTILE_SITE_KEY && (
+                  <div className="flex flex-col items-center gap-1">
+                    <TurnstileWidget
+                      ref={turnstileRef}
+                      siteKey={TURNSTILE_SITE_KEY}
+                      onVerify={(token) => setTurnstileToken(token)}
+                      onExpire={() => setTurnstileToken("")}
+                      onError={() => setTurnstileToken("")}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      由 Cloudflare Turnstile 驗證您不是機器人，無感且不需點選圖片。
+                    </p>
+                  </div>
+                )}
+
                 {isPending && !generatedReply && progress > 0 && (
                   <Progress value={progress} className="w-full h-3" />
                 )}
