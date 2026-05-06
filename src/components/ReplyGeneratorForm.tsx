@@ -9,6 +9,7 @@ import { useHistory, type HistoryEntry } from "@/hooks/use-history";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { useFakeProgress } from "@/hooks/use-fake-progress";
 import { useToast } from "@/hooks/use-toast";
+import { detectPII, maskPII, type PIIWarning } from "@/lib/pii-detector";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { GeneratedReplyCard } from "@/components/reply-generator/GeneratedReplyCard";
 import { LoadingCard } from "@/components/reply-generator/LoadingCard";
@@ -48,6 +49,16 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
 import {
   AlertTriangle,
@@ -97,6 +108,13 @@ export function ReplyGeneratorForm() {
   const [turnstileToken, setTurnstileToken] = useState<string>("");
   const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const replyCardRef = useRef<HTMLDivElement>(null);
+
+  // PII 警示狀態：偵測到敏感資料時暫停送出，等使用者確認
+  const [piiDialog, setPiiDialog] = useState<{
+    open: boolean;
+    warnings: PIIWarning[];
+    pendingData: FormSchemaType | null;
+  }>({ open: false, warnings: [], pendingData: null });
 
   const { toast } = useToast();
   const copyToClipboard = useCopyToClipboard();
@@ -200,6 +218,21 @@ export function ReplyGeneratorForm() {
     });
   }, [form, toast]);
 
+  const actuallySubmit = useCallback(
+    (data: FormSchemaType) => {
+      setGeneratedReply(undefined);
+      setState({});
+      startTransition(async () => {
+        const result = await generateReply({ ...data, turnstileToken });
+        setState(result);
+        // 用過的 token 立即重置（單次有效）
+        turnstileRef.current?.reset();
+        setTurnstileToken("");
+      });
+    },
+    [turnstileToken],
+  );
+
   const handleSubmit = (data: FormSchemaType) => {
     if (!turnstileToken) {
       toast({
@@ -209,16 +242,26 @@ export function ReplyGeneratorForm() {
       });
       return;
     }
-    setGeneratedReply(undefined);
-    setState({});
-    startTransition(async () => {
-      const result = await generateReply({ ...data, turnstileToken });
-      setState(result);
-      // 用過的 token 立即重置（單次有效）
-      turnstileRef.current?.reset();
-      setTurnstileToken("");
-    });
+
+    // 個資警示：偵測到敏感資料時跳 confirm dialog 提醒
+    const warnings = detectPII(data.parentMessage);
+    if (warnings.length > 0) {
+      setPiiDialog({ open: true, warnings, pendingData: data });
+      return;
+    }
+
+    actuallySubmit(data);
   };
+
+  const handlePiiConfirm = useCallback(() => {
+    const data = piiDialog.pendingData;
+    setPiiDialog({ open: false, warnings: [], pendingData: null });
+    if (data) actuallySubmit(data);
+  }, [piiDialog.pendingData, actuallySubmit]);
+
+  const handlePiiCancel = useCallback(() => {
+    setPiiDialog({ open: false, warnings: [], pendingData: null });
+  }, []);
 
   return (
     <div className="w-full max-w-2xl mx-auto">
@@ -398,6 +441,56 @@ export function ReplyGeneratorForm() {
           onCopy={handleCopyReply}
         />
       )}
+
+      {/* PII 個資警示 Dialog */}
+      <AlertDialog
+        open={piiDialog.open}
+        onOpenChange={(open) => {
+          if (!open) handlePiiCancel();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="h-5 w-5" />
+              偵測到敏感個資
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-left">
+                <p>您的訊息中包含以下個資，建議移除後再送出，避免不必要外流：</p>
+                <ul className="space-y-1.5">
+                  {piiDialog.warnings.map((w) => (
+                    <li
+                      key={w.type}
+                      className="text-sm bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded px-3 py-2"
+                    >
+                      <span className="font-semibold">{w.type}</span>
+                      <span className="ml-2 text-muted-foreground">
+                        {w.matches.map(maskPII).join("、")}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-muted-foreground">
+                  AI 處理過程會把訊息傳到 Google Gemini，個資也會被傳送。
+                  如果這些資訊對 AI 產生回覆並非必要，建議先移除。
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handlePiiCancel}>
+              取消，回去修改
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handlePiiConfirm}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              我已確認，繼續送出
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

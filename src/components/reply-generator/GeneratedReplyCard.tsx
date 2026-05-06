@@ -9,13 +9,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Copy } from "lucide-react";
+import { Copy, Share2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 
 interface GeneratedReplyCardProps {
   reply: string;
   onCopy: () => void;
+}
+
+function shareToLine(text: string) {
+  const url = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 export const GeneratedReplyCard = forwardRef<HTMLDivElement, GeneratedReplyCardProps>(
@@ -40,8 +45,19 @@ export const GeneratedReplyCard = forwardRef<HTMLDivElement, GeneratedReplyCardP
             <ReactMarkdown>{reply}</ReactMarkdown>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-end">
+        <CardFooter className="flex flex-wrap gap-2 justify-end">
           <Button
+            type="button"
+            onClick={() => shareToLine(reply)}
+            variant="outline"
+            className="bg-[#06C755] text-white border-[#06C755] hover:bg-[#05a648] hover:text-white transition-transform duration-300 hover:scale-105 active:scale-100"
+            aria-label="分享到 LINE"
+          >
+            <Share2 className="mr-2 h-4 w-4" />
+            分享到 LINE
+          </Button>
+          <Button
+            type="button"
             onClick={onCopy}
             variant="default"
             className="transform transition-transform duration-300 ease-in-out hover:scale-110 active:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/80"

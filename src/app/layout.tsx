@@ -5,6 +5,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { FloatingAdButton } from '@/components/FloatingAdButton';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
+import { InstallPrompt } from '@/components/InstallPrompt';
 
 const siteTitle = "教師小幫手";
 const siteDescription = "為親師溝通提供小幫手支援的回覆建議。";
@@ -140,6 +141,7 @@ export default function RootLayout({
         <Toaster />
         <FloatingAdButton />
         <ServiceWorkerRegister />
+        <InstallPrompt />
         <footer className="border-t border-border/50 bg-gradient-to-b from-background to-secondary/20 dark:from-background dark:to-secondary/30 py-8 text-center text-sm font-semibold text-muted-foreground">
           <p>
             © 2025 桃園市石門國小資訊組{' '}
