@@ -8,46 +8,48 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 94%; /* Light Grey (#F0F0F0) */
-    --foreground: 240 10% 25%; /* Dark Grey/Blue for text */
+    /* Direction A · 活潑友善（柔和圓潤）配色語言
+       主色 #6b4ed4 (深紫羅蘭) + 強調 #ff7a4a (珊瑚橘) + 薰衣背景 #fbf6ff */
+    --background: 270 100% 98%;        /* #fbf6ff 薰衣淡底 */
+    --foreground: 256 38% 16%;         /* #241a3a 深紫黑文字 */
 
-    --card: 0 0% 100%; /* White */
-    --card-foreground: 240 10% 25%;
+    --card: 0 0% 100%;                 /* 純白卡片 */
+    --card-foreground: 256 38% 16%;
 
-    --popover: 0 0% 100%; /* White */
-    --popover-foreground: 240 10% 25%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 256 38% 16%;
 
-    --primary: 250 50% 65%; /* A usable Lavender */
-    --primary-foreground: 0 0% 100%; /* White text on Lavender buttons */
+    --primary: 257 60% 57%;            /* #6b4ed4 深紫羅蘭主色 */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 60% 95%; /* Very light lavender (close to #E6E6FA) */
-    --secondary-foreground: 250 50% 50%; /* Darker lavender text */
+    --secondary: 263 75% 95%;          /* 粉嫩薰衣 secondary */
+    --secondary-foreground: 257 50% 35%;
 
-    --muted: 240 20% 90%; /* Muted lavender-grey */
-    --muted-foreground: 240 10% 45%; /* Medium lavender-grey text */
+    --muted: 264 50% 95%;              /* 淡薰衣灰 */
+    --muted-foreground: 256 22% 40%;   /* #5b4f7a soft ink */
 
-    --accent: 195 50% 70%; /* Gentle Blue (e.g. #ADD8E6 is approx HSL(195, 53%, 79%)) */
-    --accent-foreground: 240 10% 15%; /* Dark text on gentle blue accent */
+    --accent: 17 100% 65%;             /* #ff7a4a 珊瑚橘強調色 */
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 80% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 240 20% 85%; /* Lavender-grey border */
-    --input: 250 40% 97%; /* Very pale lavender input background */
-    --ring: 195 50% 70%; /* Gentle blue for focus ring */
+    --border: 263 60% 94%;             /* #ece4fa 淡紫粉邊框 */
+    --input: 270 100% 98%;             /* 同背景 */
+    --ring: 257 60% 57%;               /* 主色聚焦環 */
 
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+    --chart-1: 257 60% 57%;            /* 主色 */
+    --chart-2: 17 100% 65%;            /* 橘 */
+    --chart-3: 195 60% 55%;            /* 青 */
+    --chart-4: 145 50% 45%;            /* 綠 */
+    --chart-5: 320 65% 60%;            /* 桃 */
+    --radius: 0.75rem;
 
-    --warm-orange-red: 16 90% 50%;
+    --warm-orange-red: 17 100% 65%;    /* 與 accent 對齊（暖橘 CTA）*/
     --warm-orange-red-foreground: 0 0% 100%;
 
-    --special-button-gold: 45 90% 55%;
-    --special-button-gold-foreground: 240 10% 15%;
+    --special-button-gold: 42 90% 56%;
+    --special-button-gold-foreground: 30 60% 15%;
 
     /* Sidebar variables - kept as default, not used in this app */
     --sidebar-background: 0 0% 98%;
@@ -61,45 +63,46 @@ body {
   }
 
   .dark {
-    --background: 240 10% 10%; /* Dark desaturated blue */
-    --foreground: 240 20% 90%; /* Light lavender grey text */
+    /* Direction A 深色版 — 維持紫橘對比 */
+    --background: 256 35% 10%;
+    --foreground: 270 25% 92%;
 
-    --card: 240 10% 15%;
-    --card-foreground: 240 20% 90%;
+    --card: 256 30% 14%;
+    --card-foreground: 270 25% 92%;
 
-    --popover: 240 10% 12%;
-    --popover-foreground: 240 20% 90%;
+    --popover: 256 30% 12%;
+    --popover-foreground: 270 25% 92%;
 
-    --primary: 250 60% 75%; /* Lighter lavender for dark mode */
-    --primary-foreground: 250 25% 10%; /* Dark text on primary */
+    --primary: 257 70% 72%;            /* 深色版主色提亮 */
+    --primary-foreground: 256 30% 12%;
 
-    --secondary: 240 15% 25%; /* Darker, muted lavender */
-    --secondary-foreground: 240 30% 80%; /* Lighter text on secondary */
+    --secondary: 256 25% 22%;
+    --secondary-foreground: 270 30% 88%;
 
-    --muted: 240 10% 20%;
-    --muted-foreground: 240 15% 60%;
+    --muted: 256 22% 18%;
+    --muted-foreground: 270 20% 65%;
 
-    --accent: 195 55% 75%; /* Gentle blue, slightly brighter for dark mode */
-    --accent-foreground: 195 25% 15%; /* Dark text on accent */
+    --accent: 17 90% 68%;              /* 深色版橘提亮 */
+    --accent-foreground: 256 30% 10%;
 
     --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 10% 25%;
-    --input: 250 15% 22%; /* Dark, muted lavender/purple input background */
-    --ring: 195 55% 75%; /* Gentle blue for focus ring */
-    
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --border: 256 22% 24%;
+    --input: 256 25% 18%;
+    --ring: 257 70% 72%;
 
-    --warm-orange-red: 16 90% 55%;
+    --chart-1: 257 70% 72%;
+    --chart-2: 17 90% 68%;
+    --chart-3: 195 70% 70%;
+    --chart-4: 145 50% 65%;
+    --chart-5: 320 60% 70%;
+
+    --warm-orange-red: 17 90% 68%;
     --warm-orange-red-foreground: 0 0% 100%;
-    
-    --special-button-gold: 45 80% 60%;
-    --special-button-gold-foreground: 45 90% 10%;
+
+    --special-button-gold: 42 85% 62%;
+    --special-button-gold-foreground: 42 80% 12%;
     
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;

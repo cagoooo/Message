@@ -22,7 +22,6 @@ import type { ProcessedImage } from "@/lib/image-processor";
 import { LoadingCard } from "@/components/reply-generator/LoadingCard";
 import {
   SCENARIOS,
-  OPTION_COLORS,
   getScenarioLabel,
 } from "@/components/reply-generator/constants";
 import {
@@ -428,13 +427,14 @@ export function ReplyGeneratorForm() {
                 name="scenario"
                 render={({ field }) => {
                   const idx = SCENARIOS.findIndex((s) => s.value === field.value);
-                  const triggerCls =
-                    field.value && idx !== -1
-                      ? `w-full ${OPTION_COLORS[idx % OPTION_COLORS.length]} bg-gradient-to-r from-pink-100 via-purple-100 to-indigo-100 dark:from-pink-900/70 dark:via-purple-900/70 dark:to-indigo-900/70 font-medium`
-                      : "w-full bg-background";
+                  const selectedScenario = idx !== -1 ? SCENARIOS[idx] : null;
+                  const triggerCls = selectedScenario
+                    ? "w-full font-semibold border-primary/40 bg-secondary/60"
+                    : "w-full bg-background";
                   return (
                     <FormItem>
-                      <FormLabel className="inline-block px-3 py-1.5 text-sm font-semibold text-white bg-gradient-to-r from-sky-500 to-indigo-500 rounded-lg shadow-md border border-indigo-600/50">
+                      <FormLabel className="inline-flex items-center gap-2 px-3.5 py-1.5 text-sm font-semibold rounded-full bg-secondary text-secondary-foreground border border-border/70 shadow-sm">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary" />
                         選擇情境
                       </FormLabel>
                       <Select
@@ -444,18 +444,56 @@ export function ReplyGeneratorForm() {
                         value={field.value || undefined}
                       >
                         <FormControl>
-                          <SelectTrigger className={triggerCls}>
-                            <SelectValue placeholder="選擇一個常見情況" />
+                          <SelectTrigger
+                            className={triggerCls}
+                            style={
+                              selectedScenario
+                                ? { color: selectedScenario.color }
+                                : undefined
+                            }
+                          >
+                            {selectedScenario ? (
+                              <span className="flex items-center gap-2">
+                                <span
+                                  className="inline-flex items-center justify-center rounded-md text-base"
+                                  style={{
+                                    width: 24,
+                                    height: 24,
+                                    background: selectedScenario.color + "22",
+                                    color: selectedScenario.color,
+                                  }}
+                                >
+                                  {selectedScenario.icon}
+                                </span>
+                                {selectedScenario.label}
+                              </span>
+                            ) : (
+                              <SelectValue placeholder="選擇一個常見情況" />
+                            )}
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent className="bg-gradient-to-r from-pink-300 via-purple-300 to-indigo-400">
-                          {SCENARIOS.map((s, i) => (
+                        <SelectContent className="bg-popover/95 backdrop-blur-sm border-border/70 shadow-xl rounded-xl">
+                          {SCENARIOS.map((s) => (
                             <SelectItem
                               key={s.value}
                               value={s.value}
-                              className={`${OPTION_COLORS[i % OPTION_COLORS.length]} p-2 rounded-md my-0.5 mx-1 bg-white/80 dark:bg-neutral-800/80 hover:bg-white/95 dark:hover:bg-neutral-900/90 font-medium`}
+                              className="p-2 rounded-md my-0.5 mx-1 hover:bg-secondary/70 focus:bg-secondary data-[state=checked]:bg-secondary font-medium cursor-pointer"
+                              style={{ color: s.color }}
                             >
-                              {s.label}
+                              <span className="flex items-center gap-2">
+                                <span
+                                  className="inline-flex items-center justify-center rounded-md text-base"
+                                  style={{
+                                    width: 24,
+                                    height: 24,
+                                    background: s.color + "22",
+                                    color: s.color,
+                                  }}
+                                >
+                                  {s.icon}
+                                </span>
+                                {s.label}
+                              </span>
                             </SelectItem>
                           ))}
                         </SelectContent>
