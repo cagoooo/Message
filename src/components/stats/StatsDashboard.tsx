@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { motion } from "motion/react";
 import { httpsCallable } from "firebase/functions";
 import { getFn } from "@/lib/firebase";
@@ -9,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { BarChart3, AlertTriangle, Loader2, Lock, RefreshCw } from "lucide-react";
+import { ArrowLeft, BarChart3, AlertTriangle, Loader2, Lock, RefreshCw } from "lucide-react";
 import { StatsCharts } from "./StatsCharts";
 import { getScenarioLabel } from "@/components/reply-generator/constants";
 
@@ -73,8 +74,14 @@ export function StatsDashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="w-full max-w-md"
+        className="w-full max-w-md space-y-3"
       >
+        <Link href="/" className="inline-flex">
+          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="mr-1.5 h-4 w-4" />
+            回首頁
+          </Button>
+        </Link>
         <Card className="shadow-xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -141,6 +148,12 @@ export function StatsDashboard() {
     >
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
+          <Link href="/" className="inline-flex mb-1">
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground -ml-2">
+              <ArrowLeft className="mr-1.5 h-4 w-4" />
+              回首頁
+            </Button>
+          </Link>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <BarChart3 className="h-6 w-6 text-primary" />
             使用統計儀表板
