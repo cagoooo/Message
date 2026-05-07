@@ -67,7 +67,16 @@ async function logStats(opts: LogStatsInput): Promise<void> {
 const TURNSTILE_VERIFY_URL =
   "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
-const InputSchema = z.object({
+// Firebase callable client SDK 在 wire 上會把 undefined 序列化成 null（JSON 不支援 undefined）。
+// 所有 .optional() 欄位收到 null 時必須先轉回 undefined，否則 zod 會 reject。
+const NullToUndefinedObject = z.preprocess((data) => {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return data;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data as Record<string, unknown>)) {
+    out[k] = v === null ? undefined : v;
+  }
+  return out;
+}, z.object({
   parentMessage: z.string().min(1, "parentMessage is required"),
   scenario: z.string().min(1, "scenario is required"),
   turnstileToken: z.string().min(1, "turnstileToken is required"),
@@ -88,7 +97,9 @@ const InputSchema = z.object({
     )
     .max(10 * 1024 * 1024, "圖片過大")
     .optional(),
-});
+}));
+
+const InputSchema = NullToUndefinedObject;
 
 interface TurnstileVerifyResponse {
   success: boolean;
