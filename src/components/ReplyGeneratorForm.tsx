@@ -94,16 +94,17 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
     <Button
       type="submit"
       disabled={isPending}
-      className="w-full sm:w-auto bg-warm-orange-red text-warm-orange-red-foreground hover:bg-warm-orange-red/90 transform transition-transform duration-300 ease-in-out hover:scale-110 active:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-warm-orange-red/80"
+      size="lg"
+      className="w-full sm:w-auto px-8 py-6 text-base font-semibold rounded-full bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35 hover:brightness-110 transform transition-all duration-300 ease-out hover:scale-[1.03] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/70 disabled:opacity-70 disabled:hover:scale-100"
     >
       {isPending ? (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          產生中...
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          產生中…
         </>
       ) : (
         <>
-          <Sparkles className="mr-2 h-4 w-4" />
+          <Sparkles className="mr-2 h-5 w-5" />
           產生回覆建議
         </>
       )}
@@ -388,11 +389,20 @@ export function ReplyGeneratorForm() {
   }, []);
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
-      <Card className="shadow-xl bg-card">
-        <CardHeader className="text-center bg-primary/5 p-6 relative">
+    <div className="w-full max-w-2xl mx-auto animate-fade-up">
+      <Card className="overflow-hidden border-primary/15 shadow-2xl shadow-primary/10 bg-card/95 backdrop-blur-sm rounded-3xl">
+        <CardHeader className="relative text-center p-6 sm:p-8 bg-gradient-to-br from-primary/10 via-secondary/60 to-accent/10 border-b border-border/40">
+          {/* Header 雙 radial 光暈點綴 */}
+          <div
+            aria-hidden
+            className="absolute inset-0 opacity-60 pointer-events-none"
+            style={{
+              backgroundImage:
+                "radial-gradient(ellipse at top right, hsl(var(--accent) / 0.18), transparent 60%), radial-gradient(ellipse at bottom left, hsl(var(--primary) / 0.18), transparent 60%)",
+            }}
+          />
           {historyHydrated && (
-            <div className="absolute top-3 right-3">
+            <div className="absolute top-3 right-3 z-10">
               <HistoryPanel
                 items={historyItems}
                 max={historyMax}
@@ -403,15 +413,18 @@ export function ReplyGeneratorForm() {
               />
             </div>
           )}
-          <div className="flex items-center justify-center mb-2">
-            <BotMessageSquare className="h-10 w-10 text-primary mr-3" />
-            <CardTitle className="text-3xl md:text-4xl font-bold tracking-tight text-primary">
-              教師回應訊息建議小幫手
+          <div className="relative flex flex-col items-center">
+            {/* Direction A 圓角徽章式 logo */}
+            <div className="mb-3 inline-flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/30 ring-4 ring-background/60">
+              <BotMessageSquare className="h-7 w-7 sm:h-8 sm:w-8 text-primary-foreground" />
+            </div>
+            <CardTitle className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-foreground">
+              教師回應訊息<span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">建議小幫手</span>
             </CardTitle>
+            <CardDescription className="text-sm sm:text-base text-muted-foreground mt-2 max-w-sm leading-relaxed">
+              為家長訊息獲取小幫手支援的同理心與專業回覆建議。
+            </CardDescription>
           </div>
-          <CardDescription className="text-base md:text-lg text-muted-foreground/90 mt-1">
-            為家長訊息獲取小幫手支援的同理心與專業回覆建議。
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -535,8 +548,9 @@ export function ReplyGeneratorForm() {
                         : "text-muted-foreground";
                   return (
                     <FormItem>
-                      <FormLabel className="inline-block px-3 py-1.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg shadow-md border border-teal-600/50">
-                        家長訊息or陳述狀況
+                      <FormLabel className="inline-flex items-center gap-2 px-3.5 py-1.5 text-sm font-semibold rounded-full bg-secondary text-secondary-foreground border border-border/70 shadow-sm">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent" />
+                        家長訊息 / 陳述狀況
                       </FormLabel>
                       <FormControl>
                         <Textarea

@@ -121,8 +121,34 @@ body {
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1,"calt" 1; /* Consistent font rendering */
+    font-feature-settings: "rlig" 1,"calt" 1;
+    /* Direction A 多層光暈背景 — 在淡薰衣底上加紫橘極光感 */
+    background-image:
+      radial-gradient(ellipse 80% 60% at 12% 0%, hsl(var(--primary) / 0.10), transparent 60%),
+      radial-gradient(ellipse 70% 60% at 100% 8%, hsl(var(--accent) / 0.10), transparent 60%),
+      radial-gradient(ellipse 90% 70% at 50% 100%, hsl(var(--primary) / 0.06), transparent 60%);
+    background-attachment: fixed;
   }
+  .dark body {
+    background-image:
+      radial-gradient(ellipse 80% 60% at 12% 0%, hsl(var(--primary) / 0.30), transparent 60%),
+      radial-gradient(ellipse 70% 60% at 100% 8%, hsl(var(--accent) / 0.22), transparent 60%),
+      radial-gradient(ellipse 90% 70% at 50% 100%, hsl(var(--primary) / 0.20), transparent 60%);
+  }
+}
+
+/* Direction A 進場動畫 + 漂浮光暈 */
+@layer utilities {
+  @keyframes da-fade-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes da-float-glow {
+    0%, 100% { transform: translateY(0); opacity: .85; }
+    50%      { transform: translateY(-6px); opacity: 1; }
+  }
+  .animate-fade-up    { animation: da-fade-up 0.5s ease-out both; }
+  .animate-float-glow { animation: da-float-glow 3.5s ease-in-out infinite; }
 }
 
 /* Custom scrollbar and Markdown styling for generated reply area */
