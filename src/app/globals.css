@@ -151,6 +151,160 @@ body {
   .animate-float-glow { animation: da-float-glow 3.5s ease-in-out infinite; }
 }
 
+/* ============================================================
+   Direction A · 對話式介面元件樣式（從原型 app.jsx 整理）
+   ============================================================ */
+@layer components {
+  /* Stage h4：「家長訊息」之類的小標題，前面帶 dash 線條 */
+  .da-stage-label {
+    @apply flex items-center gap-2 text-[13px] font-semibold text-muted-foreground my-0;
+  }
+  .da-stage-label::before {
+    content: '';
+    width: 18px; height: 1px;
+    background: hsl(var(--muted-foreground));
+    opacity: .4;
+    display: inline-block;
+  }
+
+  /* 步驟提示 pill（CardHeader 右上） */
+  .da-step-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px;
+    background: hsl(var(--primary) / 0.10);
+    color: hsl(var(--primary));
+    font-size: 12px; font-weight: 600;
+  }
+
+  /* dashed 工具列盒 */
+  .da-toolbar {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 24px; align-items: center;
+    margin-top: 16px; padding: 16px;
+    background: linear-gradient(180deg, hsl(var(--muted) / 0.4), transparent);
+    border: 1px dashed hsl(var(--border));
+    border-radius: 18px;
+  }
+  @media (max-width: 760px) { .da-toolbar { grid-template-columns: 1fr; gap: 14px; } }
+  .da-toolbar h5 {
+    font-size: 11px; color: hsl(var(--muted-foreground)); font-weight: 600;
+    margin: 0 0 8px; letter-spacing: 1.5px; text-transform: uppercase;
+  }
+
+  /* 長度切換 segments */
+  .da-seg {
+    display: inline-flex;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 999px; padding: 4px;
+  }
+  .da-seg button {
+    padding: 8px 14px; border-radius: 999px; border: none;
+    background: transparent; font-size: 13px;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer; font-family: inherit;
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    transition: all .15s;
+  }
+  .da-seg button:hover { color: hsl(var(--foreground)); }
+  .da-seg button.on {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
+    color: hsl(var(--primary-foreground)); font-weight: 600;
+  }
+  .da-seg button.on .hint { color: hsl(var(--primary-foreground) / 0.66); }
+  .da-seg button .hint { font-size: 10px; color: hsl(var(--muted-foreground)); opacity: .7; }
+  @media (max-width: 640px) { .da-seg button .hint { display: none; } }
+
+  /* 語氣滑桿 */
+  .da-tone { display: flex; flex-direction: column; gap: 6px; }
+  .da-tone-row { display: flex; align-items: center; gap: 12px; }
+  .da-tone-end { font-size: 12px; color: hsl(var(--muted-foreground)); white-space: nowrap; }
+  .da-slider {
+    flex: 1; height: 32px; position: relative; cursor: pointer;
+    display: flex; align-items: center; touch-action: none;
+  }
+  @media (max-width: 640px) { .da-slider { height: 40px; } }
+  .da-track {
+    position: absolute; left: 0; right: 0; top: 50%;
+    transform: translateY(-50%); height: 6px;
+    background: linear-gradient(to right, hsl(var(--primary) / 0.25), hsl(var(--accent) / 0.25));
+    border-radius: 999px;
+  }
+  .da-fill {
+    position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    height: 6px;
+    background: linear-gradient(to right, hsl(var(--primary)), hsl(var(--accent)));
+    border-radius: 999px;
+  }
+  .da-tick {
+    position: absolute; top: 50%; width: 2px; height: 10px;
+    background: hsl(var(--border)); transform: translate(-50%,-50%); border-radius: 1px;
+  }
+  .da-knob {
+    position: absolute; top: 50%; width: 20px; height: 20px;
+    border-radius: 50%; background: #fff;
+    border: 3px solid hsl(var(--primary));
+    transform: translate(-50%,-50%);
+    box-shadow: 0 4px 12px hsl(var(--primary) / 0.30);
+    transition: transform .1s;
+  }
+  @media (max-width: 640px) { .da-knob { width: 24px; height: 24px; } }
+  .da-slider:hover .da-knob { transform: translate(-50%,-50%) scale(1.15); }
+  .da-tone-label { font-size: 12px; color: hsl(var(--muted-foreground)); }
+  .da-tone-label b { color: hsl(var(--primary)); font-weight: 600; }
+
+  /* 側欄歷史紀錄 */
+  .da-side-card {
+    background: hsl(var(--card)); border: 1px solid hsl(var(--border));
+    border-radius: 24px; padding: 14px;
+    box-shadow: 0 12px 30px -20px hsl(var(--primary) / 0.20);
+  }
+  .da-side-h3 {
+    font-size: 18px; font-weight: 700; margin: 0 0 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .da-side-h3 .badge {
+    padding: 2px 10px; border-radius: 999px;
+    background: hsl(var(--primary) / 0.10); color: hsl(var(--primary));
+    font-size: 12px; font-weight: 600;
+  }
+  .da-hist-list { display: flex; flex-direction: column; gap: 2px; }
+  .da-hist-item {
+    display: flex; gap: 12px; padding: 12px; border-radius: 14px;
+    cursor: pointer; transition: background .15s;
+    align-items: flex-start; position: relative;
+    text-align: left; width: 100%; border: none;
+    background: transparent; font-family: inherit; color: inherit;
+  }
+  .da-hist-item:hover { background: hsl(var(--secondary) / 0.6); }
+  .da-hist-item .ic {
+    width: 36px; height: 36px; border-radius: 12px;
+    display: grid; place-items: center; font-size: 16px; flex-shrink: 0;
+  }
+  .da-hist-item .body { flex: 1; min-width: 0; }
+  .da-hist-item .hh { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .da-hist-item .hh strong { font-size: 13.5px; font-weight: 600; color: hsl(var(--foreground)); }
+  .da-hist-item .hh .t { font-size: 11px; color: hsl(var(--muted-foreground)); font-weight: 400; }
+  .da-hist-item p {
+    margin: 3px 0 0; font-size: 12.5px; color: hsl(var(--muted-foreground));
+    overflow: hidden; text-overflow: ellipsis;
+    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; line-height: 1.5;
+  }
+
+  .da-tip {
+    margin-top: 16px;
+    background: linear-gradient(135deg, hsl(var(--accent) / 0.08), hsl(var(--card)));
+    border: 1px solid hsl(var(--accent) / 0.18); border-radius: 24px; padding: 18px;
+  }
+  .da-tip .lab {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: hsl(var(--accent)); font-weight: 700;
+  }
+  .da-tip h4 { margin: 8px 0 4px; font-size: 14.5px; font-weight: 600; }
+  .da-tip p { margin: 0; font-size: 12.5px; line-height: 1.6; color: hsl(var(--muted-foreground)); }
+}
+
 /* Custom scrollbar and Markdown styling for generated reply area */
 @layer utilities {
   .generated-reply-textarea::-webkit-scrollbar {

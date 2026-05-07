@@ -12,6 +12,7 @@ import { useFormDefaults } from "@/hooks/use-form-defaults";
 import { useToast } from "@/hooks/use-toast";
 import { detectPII, maskPII, type PIIWarning } from "@/lib/pii-detector";
 import { HistoryPanel } from "@/components/HistoryPanel";
+import { SideHistory } from "@/components/SideHistory";
 import {
   GeneratedReplyCard,
   type RefineInstruction,
@@ -89,6 +90,43 @@ type FormSchemaType = z.infer<typeof formSchema>;
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
+// Direction A 長度與語氣指示注入 — 將前端使用者選擇拼到訊息前綴，
+// 由 LLM 自然遵守，零後端 schema 改動。
+const LENGTH_INSTRUCTIONS = {
+  short:    "請寫成簡短版本，僅 1–2 句、不超過 60 字。",
+  standard: "請寫成標準版本，約 1 段、120–250 字。",
+  detailed: "請寫成完整版本，含問候、背景描述、行動方案、收尾，約 300–500 字。",
+} as const;
+const TONE_LABELS = ["極正式", "正式", "平衡", "親切", "非常親切"] as const;
+const TONE_INSTRUCTIONS = [
+  "用極正式、公文式的語氣，使用敬語與書面用語。",
+  "用正式、客氣、中性的語氣。",
+  "用平衡的語氣，兼具專業與親切。",
+  "用親切、溫暖的語氣，可以用一些口語但仍保持專業。",
+  "用非常親切、溫暖、像對朋友一樣的口吻，但仍尊重彼此。",
+] as const;
+function toneToIndex(v: number): number {
+  if (v < 0.125) return 0;
+  if (v < 0.375) return 1;
+  if (v < 0.625) return 2;
+  if (v < 0.875) return 3;
+  return 4;
+}
+function wrapWithInstructions(
+  raw: string,
+  length: keyof typeof LENGTH_INSTRUCTIONS,
+  toneVal: number,
+): string {
+  return [
+    "【寫作指示】",
+    `- 長度：${LENGTH_INSTRUCTIONS[length]}`,
+    `- 語氣：${TONE_INSTRUCTIONS[toneToIndex(toneVal)]}`,
+    "",
+    "【家長原始訊息／情境敘述】",
+    raw,
+  ].join("\n");
+}
+
 function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
     <Button
@@ -112,6 +150,110 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
   );
 }
 
+/**
+ * Direction A 工具列：回覆長度（簡短/標準/詳細）+ 語氣滑桿（極正式 ↔ 非常親切）
+ */
+function ToneAndLengthToolbar({
+  length,
+  onLengthChange,
+  toneVal,
+  onToneChange,
+}: {
+  length: "short" | "standard" | "detailed";
+  onLengthChange: (v: "short" | "standard" | "detailed") => void;
+  toneVal: number;
+  onToneChange: (v: number) => void;
+}) {
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const [drag, setDrag] = useState(false);
+  const ticks = [0, 0.25, 0.5, 0.75, 1];
+  const lengthOpts: Array<{ k: "short" | "standard" | "detailed"; label: string; hint: string }> = [
+    { k: "short",    label: "簡短", hint: "1–2 句" },
+    { k: "standard", label: "標準", hint: "1 段" },
+    { k: "detailed", label: "詳細", hint: "完整版" },
+  ];
+
+  const setFromX = (clientX: number) => {
+    if (!sliderRef.current) return;
+    const r = sliderRef.current.getBoundingClientRect();
+    const x = clientX - r.left;
+    onToneChange(Math.max(0, Math.min(1, x / r.width)));
+  };
+
+  useEffect(() => {
+    if (!drag) return;
+    const onMove = (e: MouseEvent | TouchEvent) => {
+      const cx = "touches" in e ? e.touches[0]?.clientX ?? 0 : (e as MouseEvent).clientX;
+      setFromX(cx);
+    };
+    const onUp = () => setDrag(false);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchmove", onMove);
+    window.addEventListener("touchend", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onUp);
+    };
+  }, [drag]);
+
+  const idx = toneToIndex(toneVal);
+
+  return (
+    <div className="da-toolbar">
+      <div>
+        <h5>回覆長度</h5>
+        <div className="da-seg">
+          {lengthOpts.map((o) => (
+            <button
+              type="button"
+              key={o.k}
+              className={length === o.k ? "on" : ""}
+              onClick={() => onLengthChange(o.k)}
+            >
+              {o.label}
+              <span className="hint">{o.hint}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <h5>語氣調整</h5>
+        <div className="da-tone">
+          <div className="da-tone-row">
+            <span className="da-tone-end">📋 正式</span>
+            <div
+              className="da-slider"
+              ref={sliderRef}
+              onMouseDown={(e) => {
+                setDrag(true);
+                setFromX(e.clientX);
+              }}
+              onTouchStart={(e) => {
+                setDrag(true);
+                setFromX(e.touches[0].clientX);
+              }}
+            >
+              <div className="da-track" />
+              {ticks.map((t) => (
+                <div key={t} className="da-tick" style={{ left: t * 100 + "%" }} />
+              ))}
+              <div className="da-fill" style={{ width: toneVal * 100 + "%" }} />
+              <div className="da-knob" style={{ left: toneVal * 100 + "%" }} />
+            </div>
+            <span className="da-tone-end">🤗 親切</span>
+          </div>
+          <div className="da-tone-label">
+            語氣：<b>{TONE_LABELS[idx]}</b>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ReplyGeneratorForm() {
   const [state, setState] = useState<ActionResult>({});
   const [isPending, startTransition] = useTransition();
@@ -121,6 +263,10 @@ export function ReplyGeneratorForm() {
   const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const replyCardRef = useRef<HTMLDivElement>(null);
   const [uploadedImage, setUploadedImage] = useState<ProcessedImage | null>(null);
+
+  // Direction A 工具列：回覆長度 + 語氣 — 透過 instruction 前綴注入到 prompt
+  const [length, setLength] = useState<"short" | "standard" | "detailed">("standard");
+  const [toneVal, setToneVal] = useState<number>(0.6);
 
   // PII 警示狀態：偵測到敏感資料時暫停送出，等使用者確認
   const [piiDialog, setPiiDialog] = useState<{
@@ -266,7 +412,7 @@ export function ReplyGeneratorForm() {
       startTransition(async () => {
         const result = await generateReply({
           scenario: formData.scenario,
-          parentMessage: formData.parentMessage,
+          parentMessage: wrapWithInstructions(formData.parentMessage, length, toneVal),
           turnstileToken,
           refineInstruction: instruction,
           previousReply: generatedReply,
@@ -282,7 +428,7 @@ export function ReplyGeneratorForm() {
         setTurnstileToken("");
       });
     },
-    [generatedReply, turnstileToken, form, toast],
+    [generatedReply, turnstileToken, form, toast, length, toneVal],
   );
 
   const handleResetForm = useCallback(() => {
@@ -341,7 +487,7 @@ export function ReplyGeneratorForm() {
       startTransition(async () => {
         const result = await generateReply({
           scenario: data.scenario,
-          parentMessage: data.parentMessage,
+          parentMessage: wrapWithInstructions(data.parentMessage, length, toneVal),
           turnstileToken,
           schoolName: data.schoolName || undefined,
           teacherName: data.teacherName || undefined,
@@ -355,7 +501,7 @@ export function ReplyGeneratorForm() {
         setTurnstileToken("");
       });
     },
-    [turnstileToken, uploadedImage],
+    [turnstileToken, uploadedImage, length, toneVal],
   );
 
   const handleSubmit = (data: FormSchemaType) => {
@@ -388,42 +534,52 @@ export function ReplyGeneratorForm() {
     setPiiDialog({ open: false, warnings: [], pendingData: null });
   }, []);
 
+  // 步驟提示文字
+  const parentMsgValue = form.watch("parentMessage") ?? "";
+  const stepText = !parentMsgValue.trim()
+    ? "1️⃣ 貼上訊息"
+    : !generatedReply && !isPending
+      ? "2️⃣ 點擊產生"
+      : isPending
+        ? "✨ 正在思考…"
+        : "✅ 回覆完成";
+
   return (
-    <div className="w-full max-w-2xl mx-auto animate-fade-up">
+    <div className="w-full max-w-6xl mx-auto grid lg:grid-cols-[minmax(0,1fr)_340px] gap-6 lg:gap-8 items-start animate-fade-up">
+      {/* === 左欄：主對話卡 + 結果 === */}
+      <div className="min-w-0">
       <Card className="overflow-hidden border-primary/15 shadow-2xl shadow-primary/10 bg-card/95 backdrop-blur-sm rounded-3xl">
-        <CardHeader className="relative text-center p-6 sm:p-8 bg-gradient-to-br from-primary/10 via-secondary/60 to-accent/10 border-b border-border/40">
-          {/* Header 雙 radial 光暈點綴 */}
-          <div
-            aria-hidden
-            className="absolute inset-0 opacity-60 pointer-events-none"
-            style={{
-              backgroundImage:
-                "radial-gradient(ellipse at top right, hsl(var(--accent) / 0.18), transparent 60%), radial-gradient(ellipse at bottom left, hsl(var(--primary) / 0.18), transparent 60%)",
-            }}
-          />
-          {historyHydrated && (
-            <div className="absolute top-3 right-3 z-10">
-              <HistoryPanel
-                items={historyItems}
-                max={historyMax}
-                onApply={handleApplyHistory}
-                onRemove={removeHistory}
-                onClear={clearHistory}
-                onCopy={(text) => void copyToClipboard(text)}
-              />
+        <CardHeader className="relative p-5 sm:p-6 bg-gradient-to-br from-primary/8 via-secondary/40 to-accent/8 border-b border-dashed border-border/60">
+          {/* 對話草稿區 + 步驟 pill — 左側「回」徽章 + 副標、右側 step pill / HistoryPanel 入口 */}
+          <div className="relative flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-primary-foreground font-bold text-lg shadow-md shadow-primary/30">
+                回
+              </div>
+              <div>
+                <CardTitle className="text-base sm:text-lg font-semibold text-foreground tracking-tight">
+                  對話草稿區
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                  家長訊息 · 選擇情境 · 產生回覆
+                </CardDescription>
+              </div>
             </div>
-          )}
-          <div className="relative flex flex-col items-center">
-            {/* Direction A 圓角徽章式 logo */}
-            <div className="mb-3 inline-flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/30 ring-4 ring-background/60">
-              <BotMessageSquare className="h-7 w-7 sm:h-8 sm:w-8 text-primary-foreground" />
+            <div className="flex items-center gap-2">
+              <span className="da-step-pill">{stepText}</span>
+              {historyHydrated && (
+                <div className="lg:hidden">
+                  <HistoryPanel
+                    items={historyItems}
+                    max={historyMax}
+                    onApply={handleApplyHistory}
+                    onRemove={removeHistory}
+                    onClear={clearHistory}
+                    onCopy={(text) => void copyToClipboard(text)}
+                  />
+                </div>
+              )}
             </div>
-            <CardTitle className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-foreground">
-              教師回應訊息<span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">建議小幫手</span>
-            </CardTitle>
-            <CardDescription className="text-sm sm:text-base text-muted-foreground mt-2 max-w-sm leading-relaxed">
-              為家長訊息獲取小幫手支援的同理心與專業回覆建議。
-            </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -569,6 +725,14 @@ export function ReplyGeneratorForm() {
                 }}
               />
 
+              {/* Direction A 工具列：回覆長度 + 語氣調整 */}
+              <ToneAndLengthToolbar
+                length={length}
+                onLengthChange={setLength}
+                toneVal={toneVal}
+                onToneChange={setToneVal}
+              />
+
               <ImageUpload
                 value={uploadedImage}
                 onChange={setUploadedImage}
@@ -684,6 +848,13 @@ export function ReplyGeneratorForm() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </div>
+      {/* === 右欄：側欄歷史紀錄（≥ lg 才顯示，手機用 CardHeader 內的 HistoryPanel）=== */}
+      {historyHydrated && (
+        <div className="hidden lg:block">
+          <SideHistory items={historyItems} onApply={handleApplyHistory} />
+        </div>
+      )}
     </div>
   );
 }
