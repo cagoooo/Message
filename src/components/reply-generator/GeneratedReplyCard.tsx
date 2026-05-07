@@ -72,8 +72,24 @@ interface GeneratedReplyCardProps {
   refineDisabled?: boolean;
 }
 
-function shareToLine(text: string) {
-  const url = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+async function shareToLine(text: string) {
+  // 手機 / 支援 Web Share API 的瀏覽器：直接叫出原生分享選單（含 LINE 好友列表）
+  if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+    try {
+      await navigator.share({ text });
+      return;
+    } catch (err) {
+      // 使用者取消（AbortError）就不再 fallback；其他錯誤才走網頁分享
+      if ((err as Error)?.name === "AbortError") return;
+    }
+  }
+  // 桌面 fallback：LINE Social Plugin。
+  // social-plugins.line.me/lineit/share 必須有非空的 url 參數，否則會顯示錯誤頁。
+  const pageUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}${window.location.pathname}`
+      : "https://cagoooo.github.io/Message/";
+  const url = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(pageUrl)}&text=${encodeURIComponent(text)}`;
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
@@ -185,7 +201,7 @@ export const GeneratedReplyCard = forwardRef<HTMLDivElement, GeneratedReplyCardP
         <CardFooter className="flex flex-wrap gap-2 justify-end">
           <Button
             type="button"
-            onClick={() => shareToLine(reply)}
+            onClick={() => { void shareToLine(reply); }}
             variant="outline"
             disabled={isRefining}
             className="bg-[#06C755] text-white border-[#06C755] hover:bg-[#05a648] hover:text-white transition-transform duration-300 hover:scale-105 active:scale-100"
