@@ -3,15 +3,25 @@ import { defineSecret } from "firebase-functions/params";
 import { setGlobalOptions } from "firebase-functions/v2";
 import { logger } from "firebase-functions";
 import { getApps, initializeApp } from "firebase-admin/app";
-import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
+import {
+  getFirestore,
+  FieldValue,
+  Timestamp,
+  type QueryDocumentSnapshot,
+} from "firebase-admin/firestore";
 import { genkit, z } from "genkit";
 import { googleAI } from "@genkit-ai/googleai";
+import { notifyLine } from "./line-notify";
 
 setGlobalOptions({ region: "asia-east1", maxInstances: 10 });
 
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 const TURNSTILE_SECRET_KEY = defineSecret("TURNSTILE_SECRET_KEY");
 const ADMIN_PASSWORD = defineSecret("ADMIN_PASSWORD");
+// LINE 推播 secrets — 共用阿凱老師既有 Channel (2008810864)
+// 沒設或設為 "DISABLED" 時整個通知會 silent skip，主功能不受影響
+const LINE_CHANNEL_ACCESS_TOKEN = defineSecret("LINE_CHANNEL_ACCESS_TOKEN");
+const LINE_ADMIN_USER_ID = defineSecret("LINE_ADMIN_USER_ID");
 
 // Initialize firebase-admin once（Functions 內 cold start 時跑一次）
 if (getApps().length === 0) initializeApp();
@@ -293,19 +303,32 @@ function getAi() {
 
 export const generateParentReply = onCall<Input, Promise<Output>>(
   {
-    secrets: [GEMINI_API_KEY, TURNSTILE_SECRET_KEY],
+    secrets: [
+      GEMINI_API_KEY,
+      TURNSTILE_SECRET_KEY,
+      LINE_CHANNEL_ACCESS_TOKEN,
+      LINE_ADMIN_USER_ID,
+    ],
     cors: [
       /^https:\/\/cagoooo\.github\.io$/,
       /^http:\/\/localhost(:\d+)?$/,
     ],
   },
   async (request) => {
+    // LINE 通知用 — 在 callable 內部讀，secret 才注入完成
+    const lineToken = LINE_CHANNEL_ACCESS_TOKEN.value();
+    const lineUserId = LINE_ADMIN_USER_ID.value();
+    const fireNotify = (event: Parameters<typeof notifyLine>[0]) => {
+      notifyLine(event, lineToken, lineUserId).catch((err) =>
+        logger.warn("[LINE Notify] unhandled", err),
+      );
+    };
+
     const parsed = InputSchema.safeParse(request.data);
     if (!parsed.success) {
-      throw new HttpsError(
-        "invalid-argument",
-        parsed.error.errors.map((e) => e.message).join("; "),
-      );
+      const errMsg = parsed.error.errors.map((e) => e.message).join("; ");
+      fireNotify({ kind: "validation_error", errorMessage: errMsg });
+      throw new HttpsError("invalid-argument", errMsg);
     }
     const {
       parentMessage,
@@ -344,22 +367,44 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
 
       const text = await generateWithRetry(ai, prompt, 2);
 
+      const mode: "generate" | "refine" = refineInstruction ? "refine" : "generate";
+      const hasAdvanced = !!(schoolName || teacherName || studentGrade || notes);
+
       // Fire-and-forget 寫統計（不 await 避免拖慢回覆，失敗不影響主流程）
       logStats({
         scenario,
-        mode: refineInstruction ? "refine" : "generate",
+        mode,
         replyLength: text.length,
         hasImage: !!imageDataUrl,
-        hasAdvanced: !!(schoolName || teacherName || studentGrade || notes),
+        hasAdvanced,
       }).catch((err) => {
         logger.warn("stats log failed (non-fatal)", err);
+      });
+
+      // Fire-and-forget LINE 通知
+      fireNotify({
+        kind: "success",
+        scenario,
+        parentMessage,
+        reply: text,
+        mode,
+        hasImage: !!imageDataUrl,
+        hasAdvanced,
       });
 
       return { reply: text };
     } catch (err) {
       logger.error("generateParentReply failed", err);
-      if (err instanceof HttpsError) throw err;
       const msg = err instanceof Error ? err.message : "unknown error";
+
+      fireNotify({
+        kind: "ai_error",
+        scenario,
+        parentMessage,
+        errorMessage: msg,
+      });
+
+      if (err instanceof HttpsError) throw err;
 
       // 對 Gemini 過載 / 限流給友善訊息
       if (isRetryableError(err)) {
@@ -436,8 +481,9 @@ export const getStats = onCall<{ password: string }, Promise<StatsResponse>>(
       .limit(30)
       .get();
 
-    const daily: DailyStats[] = snapshot.docs.map((d) => {
-      const data = d.data();
+    const daily: DailyStats[] = snapshot.docs.map(
+      (d: QueryDocumentSnapshot) => {
+        const data = d.data();
       return {
         date: data.date,
         count: data.count ?? 0,
