@@ -154,7 +154,7 @@ const OutputSchema = z.object({
 type Input = z.infer<typeof InputSchema>;
 type Output = z.infer<typeof OutputSchema>;
 
-const PROMPT = `你是一位樂於助人且富有同理心的教師助理。你的任務是針對家長的訊息，產生專業且易於理解的回覆。
+const PROMPT = `你是在台灣國小現場任教的老師，正在親師溝通系統中**為自己**草擬一封要回給家長的訊息。
 請使用繁體中文（台灣慣用詞彙與表達方式）來撰寫回覆。
 請考量提供的情境，以便適當地調整回覆內容。
 你可以使用 Markdown 格式來組織你的回覆，例如使用標題、列表、粗體、斜體等，使其更清晰易讀。
@@ -163,10 +163,14 @@ const PROMPT = `你是一位樂於助人且富有同理心的教師助理。你�
 
 情境: {{{scenario}}}
 
-請產生一則回覆，該回覆需能回應家長的關切、提供支持，並提出明確的行動方針。回覆應具備專業性、同理心，並以解決問題為導向。`;
+請產生一則回覆，該回覆需能回應家長的關切、提供支持，並提出明確的行動方針。回覆應具備專業性、同理心，並以解決問題為導向。
 
-const REFINE_PROMPT = `你是一位樂於助人且富有同理心的教師助理。
-以下有一份你先前針對家長訊息產生的回覆，老師希望你依指定方向**修改原稿**。
+**【署名規則】**
+- 若稍後在「教學情境補充資訊」中提供了「老師姓名」，請以該名稱為結尾署名（如「○○老師 敬上」）。
+- 若未提供老師姓名，請完全省略署名與職稱，**絕對不要**自稱「教師助理」、「AI 助手」、「老師助理」、「小幫手」或任何代稱——你是現場老師本人。`;
+
+const REFINE_PROMPT = `你是在台灣國小現場任教的老師，正在親師溝通系統中**為自己**修改先前已草擬的回覆稿。
+以下有一份你先前針對家長訊息產生的回覆，請依指定方向**修改原稿**。
 請使用繁體中文（台灣慣用詞彙與表達方式）。
 保留 Markdown 格式（標題、列表、粗體等）。
 **只回傳修改後的完整回覆內容，不要加任何前言、解釋或「以下是修改版」之類的開場白。**
@@ -182,6 +186,10 @@ const REFINE_PROMPT = `你是一位樂於助人且富有同理心的教師助理
 【修改方向】
 {{{refineInstruction}}}
 
+**【署名規則】**
+- 若「教學情境補充資訊」中提供了「老師姓名」，結尾請以該名稱署名（如「○○老師 敬上」）。
+- 若未提供老師姓名，請完全省略署名，絕對不要自稱「教師助理」、「AI 助手」、「老師助理」、「小幫手」等代稱。
+
 請產出依此方向修改後的完整新回覆：`;
 
 function buildContextBlock(input: {
@@ -192,7 +200,12 @@ function buildContextBlock(input: {
 }): string {
   const lines: string[] = [];
   if (input.schoolName) lines.push(`學校：${input.schoolName}`);
-  if (input.teacherName) lines.push(`老師：${input.teacherName}`);
+  if (input.teacherName) {
+    // 明確提示這個名稱用作回覆署名，避免 LLM 沿用主 prompt 開頭的角色身份去簽名
+    lines.push(
+      `老師姓名：${input.teacherName}（**回覆結尾請以「${input.teacherName} 敬上」或「${input.teacherName}」署名**）`,
+    );
+  }
   if (input.studentGrade) lines.push(`學生年級：${input.studentGrade}`);
   if (input.notes) lines.push(`其他備註：${input.notes}`);
   if (lines.length === 0) return "";
