@@ -17,7 +17,10 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+      // 手機：頂部進場（避開底部 mobile-bar / 浮動按鈕）
+      "fixed top-0 left-0 right-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4",
+      // 桌面：底部居中（避開右下角 FloatingAdButton）
+      "sm:bottom-6 sm:left-1/2 sm:right-auto sm:top-auto sm:flex-col sm:-translate-x-1/2 sm:max-w-md sm:px-0",
       className
     )}
     {...props}
@@ -26,15 +29,20 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  // Direction A 配色升級：圓角 2xl + backdrop-blur + 主色陰影暈染
+  "group pointer-events-auto relative flex w-full items-center justify-between gap-4 overflow-hidden rounded-2xl border p-5 pr-10 shadow-xl shadow-primary/10 backdrop-blur-md transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
   {
     variants: {
       variant: {
-        default: "border bg-background text-foreground",
+        // 預設：白底（半透明）+ 紫色淡邊框 + 主色 ring 點綴
+        default:
+          "border-primary/20 bg-card/95 text-foreground ring-1 ring-primary/5",
+        // 危險：紅色，柔化
         destructive:
-          "destructive group border-destructive bg-destructive text-destructive-foreground",
-        success: // Added success variant
-          "success group border-green-500/50 bg-green-500/10 text-green-700 dark:border-green-600/50 dark:bg-green-600/20 dark:text-green-300",
+          "destructive group border-destructive/40 bg-destructive/95 text-destructive-foreground ring-1 ring-destructive/20",
+        // 成功：emerald 但用半透明融入薰衣背景
+        success:
+          "success group border-emerald-500/40 bg-emerald-50/95 text-emerald-800 ring-1 ring-emerald-500/15 dark:border-emerald-500/30 dark:bg-emerald-950/80 dark:text-emerald-200",
       },
     },
     defaultVariants: {
