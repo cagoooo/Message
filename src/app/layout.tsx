@@ -144,18 +144,34 @@ export default function RootLayout({
         <ServiceWorkerRegister />
         <InstallPrompt />
         <AdminAccessButton />
-        <footer className="border-t border-border/50 bg-gradient-to-b from-background to-secondary/20 dark:from-background dark:to-secondary/30 py-8 text-center text-sm font-semibold text-muted-foreground">
-          <p>
-            © 2025 桃園市石門國小資訊組{' '}
-            <a
-              href="https://www.smes.tyc.edu.tw/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-bold text-primary hover:text-accent hover:underline transition-colors duration-300 ease-in-out"
-            >
-              阿凱老師 設計
-            </a>
-          </p>
+        <footer className="relative mt-12 sm:mt-16">
+          {/* Direction A 配色 footer：dashed 頂線 + 漸層底 + 雙色點裝飾 + 副標 */}
+          <div className="absolute inset-x-0 top-0 h-px bg-[repeating-linear-gradient(90deg,hsl(var(--border))_0_8px,transparent_8px_16px)]" />
+          <div className="bg-gradient-to-b from-transparent via-secondary/30 to-secondary/60 dark:via-secondary/20 dark:to-secondary/30 backdrop-blur-sm">
+            <div className="mx-auto max-w-5xl px-6 py-8 sm:py-10 text-center">
+              {/* 主品牌行：心形 + 學校 + 老師 */}
+              <p className="inline-flex items-center justify-center flex-wrap gap-x-1.5 gap-y-1 text-sm font-medium text-muted-foreground">
+                <span className="text-muted-foreground/80">© {new Date().getFullYear()}</span>
+                <span aria-hidden className="inline-block w-1 h-1 rounded-full bg-primary/50 mx-1" />
+                <span>桃園市石門國小資訊組</span>
+                <span aria-hidden className="inline-block w-1 h-1 rounded-full bg-accent/60 mx-1" />
+                <a
+                  href="https://www.smes.tyc.edu.tw/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group inline-flex items-center gap-1.5 font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent hover:underline underline-offset-4 decoration-2 decoration-primary/60 transition-all"
+                >
+                  阿凱老師
+                  <span className="text-accent text-base group-hover:scale-110 transition-transform" aria-hidden>♥</span>
+                  <span className="text-foreground/60 font-medium">設計</span>
+                </a>
+              </p>
+              {/* 副標：價值主張 */}
+              <p className="mt-3 text-xs text-muted-foreground/70 tracking-wider">
+                親師溝通 · 同理回應 · 教學專業
+              </p>
+            </div>
+          </div>
         </footer>
       </body>
     </html>
