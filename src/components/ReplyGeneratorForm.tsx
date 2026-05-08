@@ -79,7 +79,9 @@ const formSchema = z.object({
   scenario: z
     .string({ required_error: "請選擇一個情境。" })
     .min(1, "必須填寫情境。"),
-  parentMessage: z.string().min(5, { message: "家長訊息至少需 5 個字元。" }),
+  // 訊息長度的條件式驗證（有圖片可不填、無圖片至少 5 字）改在 handleSubmit 自訂處理，
+  // schema 本身不擋空字串。
+  parentMessage: z.string().default(""),
   // 進階情境（皆 optional）
   schoolName: z.string().max(100).optional(),
   teacherName: z.string().max(50).optional(),
@@ -505,6 +507,24 @@ export function ReplyGeneratorForm() {
   );
 
   const handleSubmit = (data: FormSchemaType) => {
+    // 條件式驗證：訊息與截圖至少要有一個；只有訊息時要 ≥ 5 字
+    const msg = (data.parentMessage ?? "").trim();
+    const hasImage = !!uploadedImage;
+    if (!msg && !hasImage) {
+      form.setError("parentMessage", {
+        type: "manual",
+        message: "請貼上家長訊息、簡述情況，或上傳一張對話截圖。",
+      });
+      return;
+    }
+    if (!hasImage && msg.length < 5) {
+      form.setError("parentMessage", {
+        type: "manual",
+        message: "若沒附截圖，訊息至少需 5 個字元。",
+      });
+      return;
+    }
+
     if (!turnstileToken) {
       toast({
         variant: "destructive",
@@ -514,11 +534,13 @@ export function ReplyGeneratorForm() {
       return;
     }
 
-    // 個資警示：偵測到敏感資料時跳 confirm dialog 提醒
-    const warnings = detectPII(data.parentMessage);
-    if (warnings.length > 0) {
-      setPiiDialog({ open: true, warnings, pendingData: data });
-      return;
+    // 個資警示：偵測到敏感資料時跳 confirm dialog 提醒（只有訊息有內容才檢查）
+    if (msg) {
+      const warnings = detectPII(msg);
+      if (warnings.length > 0) {
+        setPiiDialog({ open: true, warnings, pendingData: data });
+        return;
+      }
     }
 
     actuallySubmit(data);
@@ -534,10 +556,11 @@ export function ReplyGeneratorForm() {
     setPiiDialog({ open: false, warnings: [], pendingData: null });
   }, []);
 
-  // 步驟提示文字
+  // 步驟提示文字 — 有訊息或截圖任一即可進入第 2 步
   const parentMsgValue = form.watch("parentMessage") ?? "";
-  const stepText = !parentMsgValue.trim()
-    ? "1️⃣ 貼上訊息"
+  const hasInput = parentMsgValue.trim().length > 0 || !!uploadedImage;
+  const stepText = !hasInput
+    ? "1️⃣ 貼上訊息或上傳截圖"
     : !generatedReply && !isPending
       ? "2️⃣ 點擊產生"
       : isPending
@@ -688,11 +711,20 @@ export function ReplyGeneratorForm() {
                 name="parentMessage"
                 render={({ field }) => {
                   const len = field.value?.length ?? 0;
-                  const hint =
-                    len === 0
+                  const hasImage = !!uploadedImage;
+                  // hint 邏輯：
+                  // - 有圖片：訊息為非必填（綠色），有訊息時仍提示字數
+                  // - 沒圖片：原規則（≥5 字才能送）
+                  const hint = hasImage
+                    ? len === 0
+                      ? { text: "📷 已附截圖，AI 會直接讀圖，文字非必填 ✓", tone: "good" as const }
+                      : len > 1500
+                        ? { text: `${len} 字元 — 訊息較長，AI 處理時間可能延長`, tone: "warn" as const }
+                        : { text: `${len} 字元 — 連同截圖一起送 ✓`, tone: "good" as const }
+                    : len === 0
                       ? { text: "您提供的上下文越多，小幫手的建議就會越好。", tone: "muted" as const }
                       : len < 5
-                        ? { text: `${len} 字元 — 至少需要 5 個字元`, tone: "warn" as const }
+                        ? { text: `${len} 字元 — 至少需要 5 個字元（或改附截圖）`, tone: "warn" as const }
                         : len > 1500
                           ? { text: `${len} 字元 — 訊息較長，AI 處理時間可能延長`, tone: "warn" as const }
                           : { text: `${len} 字元 — 可送出 ✓`, tone: "good" as const };
@@ -707,10 +739,19 @@ export function ReplyGeneratorForm() {
                       <FormLabel className="inline-flex items-center gap-2 px-3.5 py-1.5 text-sm font-semibold rounded-full bg-secondary text-secondary-foreground border border-border/70 shadow-sm">
                         <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent" />
                         家長訊息 / 陳述狀況
+                        {hasImage && (
+                          <span className="ml-1 text-[11px] font-normal text-muted-foreground">
+                            （已附截圖・可不填）
+                          </span>
+                        )}
                       </FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="在此貼上家長的訊息，或簡要描述情況..."
+                          placeholder={
+                            hasImage
+                              ? "已附截圖，AI 會直接讀圖。如有額外想補充的細節再填這裡（選填）..."
+                              : "在此貼上家長的訊息，或簡要描述情況..."
+                          }
                           rows={6}
                           {...field}
                           className="mt-1 block w-full rounded-md shadow-sm p-3 bg-input text-foreground focus:ring-2 focus:ring-accent focus:border-accent hover:shadow-lg transition-all duration-300 ease-in-out placeholder-muted-foreground"
