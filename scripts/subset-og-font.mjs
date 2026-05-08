@@ -13,15 +13,16 @@ const FONT_IN = resolve(__dirname, "fonts", "NotoSansTC-Bold.ttf");
 const FONT_OUT = resolve(__dirname, "fonts", "NotoSansTC-Subset.ttf");
 
 const USED_TEXT = `
-教師回應訊息建議小幫手
-親師溝通的 AI 回覆建議
+教師回應訊息建議小幫手覆 Pro 版
+親師溝通的同理心 AI 回覆建議
 為親師溝通提供同理心專業
 桃園市石門國小資訊組阿凱老師設計
 情境選擇家長訊息陳述狀況產生按鈕
 孩童受傷嚴重衝突不理性學業行為問題
 家長正面回饋會面缺交作業活動詢問健康一般其他
 複製分享 LINE 立即開啟試用送出
-©2025
+種語氣長度識圖功能離線教學專業
+©2025 2026
 ✨★●▸◆◇•✓✗
 桃園市石門國小資訊組
 `;

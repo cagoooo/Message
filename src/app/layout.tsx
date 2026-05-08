@@ -8,8 +8,8 @@ import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { AdminAccessButton } from '@/components/AdminAccessButton';
 
-const siteTitle = "教師小幫手";
-const siteDescription = "為親師溝通提供小幫手支援的回覆建議。";
+const siteTitle = "教師回覆小幫手 Pro版";
+const siteDescription = "為親師溝通提供同理心 AI 回覆建議，含 12 種情境、語氣與長度自訂、PWA 離線、OCR 識圖。";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://cagoooo.github.io/Message";
 // 必須與 next.config.ts 的 basePath 同步（GitHub Pages 部署在 /Message/ 子路徑）
 const basePath = process.env.NODE_ENV === "production" ? "/Message" : "";
@@ -89,7 +89,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#7B61C4",
+  themeColor: "#6b4ed4", // Direction A 主色
   colorScheme: "light dark",
   width: "device-width",
   initialScale: 1,

@@ -1,13 +1,13 @@
 {
-  "name": "教師回應訊息建議小幫手",
-  "short_name": "教師小幫手",
-  "description": "為親師溝通提供 AI 同理心專業回覆建議",
+  "name": "教師回覆小幫手 Pro版",
+  "short_name": "教師小幫手 Pro",
+  "description": "為親師溝通提供同理心 AI 回覆建議，含 12 種情境、語氣與長度自訂、PWA 離線、OCR 識圖",
   "start_url": "/Message/",
   "scope": "/Message/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#E6E6FA",
-  "theme_color": "#7B61C4",
+  "background_color": "#fbf6ff",
+  "theme_color": "#6b4ed4",
   "lang": "zh-Hant",
   "dir": "ltr",
   "icons": [
