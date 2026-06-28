@@ -3,11 +3,15 @@
 
 import { generateParentReply, type GenerateParentReplyInput, type GenerateParentReplyOutput } from "@/ai/flows/generate-parent-reply";
 import { notifyGoogleChat } from "@/lib/google-chat-notify";
+import { checkGenerationRateLimit, formatRetryAfter } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const ReplySchema = z.object({
   scenario: z.string().min(1, "必須填寫情境。"),
-  parentMessage: z.string().min(1, "家長訊息不能為空。"),
+  parentMessage: z
+    .string()
+    .min(1, "家長訊息不能為空。")
+    .max(1500, "家長訊息請控制在 1500 字以內，避免消耗過多 AI 額度。"),
 });
 
 interface ActionResult {
@@ -51,6 +55,25 @@ export async function handleGenerateReplyAction(
   }
 
   const { scenario, parentMessage } = validatedFields.data;
+  const rateLimit = await checkGenerationRateLimit();
+
+  if (!rateLimit.allowed) {
+    const waitTime = formatRetryAfter(rateLimit.retryAfterSeconds);
+    const error = `使用次數已達上限。為了讓大家都能穩定使用，每位使用者每小時最多可產生 ${rateLimit.limit} 次，請 ${waitTime} 後再試。`;
+
+    await notifyGoogleChat({
+      requestId,
+      status: "failure",
+      title: "家長訊息回覆服務",
+      scenario,
+      progress: "已阻擋超量使用，未呼叫 Gemini API",
+      message: `client=${rateLimit.clientKey}；${parentMessage}`,
+      error,
+      durationMs: Date.now() - startedAt,
+    });
+
+    return { error };
+  }
 
   try {
     await notifyGoogleChat({
@@ -58,8 +81,8 @@ export async function handleGenerateReplyAction(
       status: "started",
       title: "家長訊息回覆服務",
       scenario,
-      progress: "已收到使用者請求，正在產生回覆",
-      message: parentMessage,
+      progress: `已收到使用者請求，正在產生回覆；本小時剩餘 ${rateLimit.remaining} 次`,
+      message: `client=${rateLimit.clientKey}；${parentMessage}`,
     });
 
     const input: GenerateParentReplyInput = { parentMessage, scenario };

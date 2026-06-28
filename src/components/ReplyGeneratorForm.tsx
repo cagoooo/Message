@@ -36,7 +36,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { BotMessageSquare, Sparkles, Copy, Loader2, AlertTriangle } from "lucide-react";
+import { BotMessageSquare, Sparkles, Copy, Loader2, AlertTriangle, ShieldCheck } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
@@ -297,6 +297,13 @@ export function ReplyGeneratorForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <Alert className="mb-6 border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+            <ShieldCheck className="h-4 w-4" />
+            <AlertTitle>友善使用提醒</AlertTitle>
+            <AlertDescription>
+              這個工具會消耗老師提供的 Gemini API 額度。請在真正需要時再產生，每位使用者每小時最多 5 次，避免短時間大量測試或重複送出。
+            </AlertDescription>
+          </Alert>
           <Form {...form}>
             <form
               className="space-y-8"
@@ -380,7 +387,7 @@ export function ReplyGeneratorForm() {
                       />
                     </FormControl>
                     <FormDescription>
-                      您提供的上下文越多，小幫手的建議就會越好。
+                      您提供的上下文越清楚，小幫手的建議就會越好；請控制在 1500 字以內，避免不必要的 API 消耗。
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -465,4 +472,3 @@ export function ReplyGeneratorForm() {
     </div>
   );
 }
-
