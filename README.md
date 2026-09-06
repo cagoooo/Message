@@ -176,7 +176,7 @@ firebase deploy --only functions \
 - Repository：`cagoooo/Message`
 - 可見性：公開
 - 主要技術：TypeScript、React、Next.js、Firebase、Tailwind CSS
-- 線上入口：未在 GitHub repository metadata 設定
+- 線上入口：<https://cagoooo.github.io/Message/>
 
 ### 可以怎麼應用
 
