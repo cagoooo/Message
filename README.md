@@ -8,6 +8,8 @@
 ![Firebase](https://img.shields.io/badge/Firebase-Functions-orange?logo=firebase)
 ![Gemini](https://img.shields.io/badge/Gemini-2.5%20Flash-blue?logo=google)
 
+> 📌 **目前版本：v1.0.0**（版本管理自 2026-09-06 起，依據 `package.json`）
+
 ---
 
 ## 🌐 線上 Demo
