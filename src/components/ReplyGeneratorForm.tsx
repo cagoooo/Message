@@ -568,7 +568,7 @@ export function ReplyGeneratorForm() {
         : "✅ 回覆完成";
 
   return (
-    <div className="w-full max-w-6xl mx-auto grid lg:grid-cols-[minmax(0,1fr)_340px] gap-6 lg:gap-8 items-start animate-fade-up">
+    <div className="w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1440px] mx-auto grid lg:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_380px] gap-6 lg:gap-8 items-start animate-fade-up">
       {/* === 左欄：主對話卡 + 結果 === */}
       <div className="min-w-0">
       <Card className="overflow-hidden border-primary/15 shadow-2xl shadow-primary/10 bg-card/95 backdrop-blur-sm rounded-3xl">
@@ -754,7 +754,7 @@ export function ReplyGeneratorForm() {
                           }
                           rows={6}
                           {...field}
-                          className="mt-1 block w-full rounded-md shadow-sm p-3 bg-input text-foreground focus:ring-2 focus:ring-accent focus:border-accent hover:shadow-lg transition-all duration-300 ease-in-out placeholder-muted-foreground"
+                          className="mt-1 block w-full rounded-md shadow-sm p-3 sm:p-4 text-base sm:text-lg leading-relaxed bg-input text-foreground focus:ring-2 focus:ring-accent focus:border-accent hover:shadow-lg transition-all duration-300 ease-in-out placeholder-muted-foreground"
                         />
                       </FormControl>
                       <FormDescription className={toneCls}>

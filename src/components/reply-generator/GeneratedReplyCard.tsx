@@ -125,10 +125,10 @@ export const GeneratedReplyCard = forwardRef<HTMLDivElement, GeneratedReplyCardP
               exit={{ opacity: 0 }}
               transition={{ duration: 0.35, ease: "easeOut" }}
               className={cn(
-                "w-full rounded-md shadow-sm p-3 border text-sm",
+                "w-full rounded-md shadow-sm p-4 sm:p-6 border text-base sm:text-lg",
                 "bg-gradient-to-br from-primary/15 via-background to-accent/15 dark:from-primary/30 dark:via-background/20 dark:to-accent/30",
                 "text-foreground border-border",
-                "leading-relaxed",
+                "leading-loose",
                 "generated-reply-textarea min-h-[160px]",
                 isRefining && "opacity-60 pointer-events-none",
               )}

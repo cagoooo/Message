@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <main className="relative flex flex-grow flex-col items-stretch pt-8 pb-16 px-4 sm:px-6 md:px-10">
       {/* Hero — Direction A 漸層大標 */}
-      <section className="w-full max-w-6xl mx-auto mb-8 sm:mb-10 text-center md:text-left animate-fade-up">
+      <section className="w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1440px] mx-auto mb-8 sm:mb-10 text-center md:text-left animate-fade-up">
         <div className="inline-flex items-center gap-2 mb-4 px-3 py-1.5 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold border border-border/70 shadow-sm">
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary" />
           AI · 親師溝通好夥伴
