@@ -12,6 +12,7 @@ import {
 import { genkit, z } from "genkit";
 import { googleAI } from "@genkit-ai/googleai";
 import { notifyLine } from "./line-notify";
+import { notifyAiUsage, clientIp } from "./notify-google-chat";
 
 setGlobalOptions({ region: "asia-east1", maxInstances: 10 });
 
@@ -22,6 +23,18 @@ const ADMIN_PASSWORD = defineSecret("ADMIN_PASSWORD");
 // 沒設或設為 "DISABLED" 時整個通知會 silent skip，主功能不受影響
 const LINE_CHANNEL_ACCESS_TOKEN = defineSecret("LINE_CHANNEL_ACCESS_TOKEN");
 const LINE_ADMIN_USER_ID = defineSecret("LINE_ADMIN_USER_ID");
+// 2026-11-15：每次使用 AI 功能都發 Google Chat 通知（網址存在 Secret Manager）
+const GOOGLE_CHAT_WEBHOOK_URL = defineSecret("GOOGLE_CHAT_WEBHOOK_URL");
+const SITE_NAME = "教師回覆小幫手 Pro版";
+
+// 通知卡片上的「功能名稱」：只認前端固定的 4 個調整按鈕，自訂文字不外送（隱私）
+const REFINE_PRESETS = ["再溫和一點", "再正式一點", "縮短", "加更多細節"];
+function featureName(data: unknown): string {
+  const d = (data && typeof data === "object" ? data : {}) as Record<string, unknown>;
+  const refine = typeof d.refineInstruction === "string" ? d.refineInstruction.trim() : "";
+  if (refine) return REFINE_PRESETS.includes(refine) ? refine : "調整回覆（自訂方向）";
+  return typeof d.imageDataUrl === "string" && d.imageDataUrl ? "產生家長回覆（附截圖）" : "產生家長回覆";
+}
 
 // Initialize firebase-admin once（Functions 內 cold start 時跑一次）
 if (getApps().length === 0) initializeApp();
@@ -365,6 +378,7 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
       TURNSTILE_SECRET_KEY,
       LINE_CHANNEL_ACCESS_TOKEN,
       LINE_ADMIN_USER_ID,
+      GOOGLE_CHAT_WEBHOOK_URL,
     ],
     cors: [
       /^https:\/\/cagoooo\.github\.io$/,
@@ -372,46 +386,49 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
     ],
   },
   async (request) => {
+    const feature = featureName(request.data);
     // 0. 先確認是 Google 帳號登入 —— 沒登入就直接拒絕，不驗 Turnstile、不呼叫 Gemini
-    const uid = requireGoogleUser(request.auth);
+    let uid: string;
+    try {
+      uid = requireGoogleUser(request.auth);
+    } catch (err) {
+      // 未登入被擋也通知（同一 IP 每 5 分鐘最多 1 則）
+      await notifyAiUsage(SITE_NAME, {
+        kind: "blocked",
+        feature,
+        ip: clientIp(request.rawRequest),
+        reason: err instanceof Error ? err.message : undefined,
+      });
+      throw err;
+    }
     logger.info("generateParentReply called", { uid });
 
-    // LINE 通知用 — 在 callable 內部讀，secret 才注入完成
-    const lineToken = LINE_CHANNEL_ACCESS_TOKEN.value();
-    const lineUserId = LINE_ADMIN_USER_ID.value();
-    const fireNotify = (event: Parameters<typeof notifyLine>[0]) => {
-      notifyLine(event, lineToken, lineUserId).catch((err) =>
-        logger.warn("[LINE Notify] unhandled", err),
-      );
+    const startedAt = Date.now();
+    const chatUser = {
+      name: request.auth?.token?.name as string | undefined,
+      email: request.auth?.token?.email,
     };
 
-    const parsed = InputSchema.safeParse(request.data);
-    if (!parsed.success) {
-      const errMsg = parsed.error.errors.map((e) => e.message).join("; ");
-      fireNotify({ kind: "validation_error", errorMessage: errMsg });
-      throw new HttpsError("invalid-argument", errMsg);
-    }
-    const {
-      parentMessage,
-      scenario,
-      turnstileToken,
-      refineInstruction,
-      previousReply,
-      schoolName,
-      teacherName,
-      studentGrade,
-      notes,
-      imageDataUrl,
-    } = parsed.data;
+    const run = async (): Promise<Output> => {
+      // LINE 通知用 — 在 callable 內部讀，secret 才注入完成
+      const lineToken = LINE_CHANNEL_ACCESS_TOKEN.value();
+      const lineUserId = LINE_ADMIN_USER_ID.value();
+      const fireNotify = (event: Parameters<typeof notifyLine>[0]) => {
+        notifyLine(event, lineToken, lineUserId).catch((err) =>
+          logger.warn("[LINE Notify] unhandled", err),
+        );
+      };
 
-    // 1. 先驗 Turnstile token —— 失敗就直接 throw，不浪費 Gemini quota
-    await verifyTurnstile(turnstileToken, request.rawRequest?.ip);
-
-    try {
-      const ai = getAi();
-      const promptParts = buildPromptParts({
+      const parsed = InputSchema.safeParse(request.data);
+      if (!parsed.success) {
+        const errMsg = parsed.error.errors.map((e) => e.message).join("; ");
+        fireNotify({ kind: "validation_error", errorMessage: errMsg });
+        throw new HttpsError("invalid-argument", errMsg);
+      }
+      const {
         parentMessage,
         scenario,
+        turnstileToken,
         refineInstruction,
         previousReply,
         schoolName,
@@ -419,63 +436,102 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
         studentGrade,
         notes,
         imageDataUrl,
-      });
+      } = parsed.data;
 
-      // 沒圖片時用純文字（節省 SDK 處理開銷），有圖片才用 multimodal array
-      const prompt: string | PromptPart[] = imageDataUrl
-        ? promptParts
-        : (promptParts[0] as { text: string }).text;
+      // 1. 先驗 Turnstile token —— 失敗就直接 throw，不浪費 Gemini quota
+      await verifyTurnstile(turnstileToken, request.rawRequest?.ip);
 
-      const text = await generateWithRetry(ai, prompt, 2);
+      try {
+        const ai = getAi();
+        const promptParts = buildPromptParts({
+          parentMessage,
+          scenario,
+          refineInstruction,
+          previousReply,
+          schoolName,
+          teacherName,
+          studentGrade,
+          notes,
+          imageDataUrl,
+        });
 
-      const mode: "generate" | "refine" = refineInstruction ? "refine" : "generate";
-      const hasAdvanced = !!(schoolName || teacherName || studentGrade || notes);
+        // 沒圖片時用純文字（節省 SDK 處理開銷），有圖片才用 multimodal array
+        const prompt: string | PromptPart[] = imageDataUrl
+          ? promptParts
+          : (promptParts[0] as { text: string }).text;
 
-      // Fire-and-forget 寫統計（不 await 避免拖慢回覆，失敗不影響主流程）
-      logStats({
-        scenario,
-        mode,
-        replyLength: text.length,
-        hasImage: !!imageDataUrl,
-        hasAdvanced,
-      }).catch((err) => {
-        logger.warn("stats log failed (non-fatal)", err);
-      });
+        const text = await generateWithRetry(ai, prompt, 2);
 
-      // Fire-and-forget LINE 通知
-      fireNotify({
-        kind: "success",
-        scenario,
-        parentMessage,
-        reply: text,
-        mode,
-        hasImage: !!imageDataUrl,
-        hasAdvanced,
-      });
+        const mode: "generate" | "refine" = refineInstruction ? "refine" : "generate";
+        const hasAdvanced = !!(schoolName || teacherName || studentGrade || notes);
 
-      return { reply: text };
-    } catch (err) {
-      logger.error("generateParentReply failed", err);
-      const msg = err instanceof Error ? err.message : "unknown error";
+        // Fire-and-forget 寫統計（不 await 避免拖慢回覆，失敗不影響主流程）
+        logStats({
+          scenario,
+          mode,
+          replyLength: text.length,
+          hasImage: !!imageDataUrl,
+          hasAdvanced,
+        }).catch((err) => {
+          logger.warn("stats log failed (non-fatal)", err);
+        });
 
-      fireNotify({
-        kind: "ai_error",
-        scenario,
-        parentMessage,
-        errorMessage: msg,
-      });
+        // Fire-and-forget LINE 通知
+        fireNotify({
+          kind: "success",
+          scenario,
+          parentMessage,
+          reply: text,
+          mode,
+          hasImage: !!imageDataUrl,
+          hasAdvanced,
+        });
 
-      if (err instanceof HttpsError) throw err;
+        return { reply: text };
+      } catch (err) {
+        logger.error("generateParentReply failed", err);
+        const msg = err instanceof Error ? err.message : "unknown error";
 
-      // 對 Gemini 過載 / 限流給友善訊息
-      if (isRetryableError(err)) {
-        throw new HttpsError(
-          "resource-exhausted",
-          "AI 服務暫時繁忙（Google 端過載），請稍候 30 秒再試一次。如持續發生，可能是模型升級或維護中。",
-        );
+        fireNotify({
+          kind: "ai_error",
+          scenario,
+          parentMessage,
+          errorMessage: msg,
+        });
+
+        if (err instanceof HttpsError) throw err;
+
+        // 對 Gemini 過載 / 限流給友善訊息
+        if (isRetryableError(err)) {
+          throw new HttpsError(
+            "resource-exhausted",
+            "AI 服務暫時繁忙（Google 端過載），請稍候 30 秒再試一次。如持續發生，可能是模型升級或維護中。",
+          );
+        }
+
+        throw new HttpsError("internal", `小幫手回覆失敗：${msg}`);
       }
+    };
 
-      throw new HttpsError("internal", `小幫手回覆失敗：${msg}`);
+    // 回應前發 Google Chat 通知（最多等 2.5 秒、不會丟例外，不影響回覆）
+    try {
+      const result = await run();
+      await notifyAiUsage(SITE_NAME, {
+        kind: "success",
+        feature,
+        user: chatUser,
+        durationMs: Date.now() - startedAt,
+      });
+      return result;
+    } catch (err) {
+      await notifyAiUsage(SITE_NAME, {
+        kind: "failed",
+        feature,
+        user: chatUser,
+        durationMs: Date.now() - startedAt,
+        error: err,
+      });
+      throw err;
     }
   },
 );
