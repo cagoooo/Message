@@ -21,6 +21,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { GoogleSignInButton } from "@/components/auth/GoogleLogin";
 import ReactMarkdown from "react-markdown";
 
 export type RefineInstruction =
@@ -70,6 +71,10 @@ interface GeneratedReplyCardProps {
   isRefining?: boolean;
   /** 沒 token / 等驗證時 disable */
   refineDisabled?: boolean;
+  /** 尚未用 Google 帳號登入：調整按鈕下方改顯示登入提示與登入按鈕 */
+  loginRequired?: boolean;
+  onLogin?: () => void;
+  signingIn?: boolean;
 }
 
 async function shareToLine(text: string) {
@@ -95,7 +100,16 @@ async function shareToLine(text: string) {
 
 export const GeneratedReplyCard = forwardRef<HTMLDivElement, GeneratedReplyCardProps>(
   function GeneratedReplyCard(
-    { reply, onCopy, onRefine, isRefining = false, refineDisabled = false },
+    {
+      reply,
+      onCopy,
+      onRefine,
+      isRefining = false,
+      refineDisabled = false,
+      loginRequired = false,
+      onLogin,
+      signingIn = false,
+    },
     ref,
   ) {
     return (
@@ -190,7 +204,21 @@ export const GeneratedReplyCard = forwardRef<HTMLDivElement, GeneratedReplyCardP
                   </motion.div>
                 ))}
               </motion.div>
-              {refineDisabled && !isRefining && (
+              {loginRequired && !isRefining ? (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-2.5">
+                  <p className="text-sm font-semibold text-primary">
+                    🔐 請先用 Google 帳號登入，才能再次調整回覆
+                  </p>
+                  {onLogin && (
+                    <GoogleSignInButton
+                      size="sm"
+                      onClick={onLogin}
+                      signingIn={signingIn}
+                      className="w-full sm:w-auto sm:ml-auto"
+                    />
+                  )}
+                </div>
+              ) : refineDisabled && !isRefining && (
                 <p className="text-xs text-muted-foreground/80">
                   請先等下方人機驗證完成（綠色「成功！」）才能再次調整。
                 </p>

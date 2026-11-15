@@ -10,12 +10,27 @@ vi.mock("firebase/app", () => ({
   initializeApp: vi.fn(),
   getApps: () => [],
 }));
+// 模擬登入狀態：預設為 Google 登入使用者
+const GOOGLE_USER = {
+  uid: "u1",
+  isAnonymous: false,
+  providerData: [{ providerId: "google.com" }],
+};
+const authMock: { currentUser: unknown; authStateReady: () => Promise<void> } = {
+  currentUser: GOOGLE_USER,
+  authStateReady: () => Promise.resolve(),
+};
 vi.mock("@/lib/firebase", () => ({
   getFn: vi.fn(),
+  getFirebaseAuth: () => authMock,
 }));
 
 // 在 mocks 之後再 import 受測模組
 import { generateReply } from "@/lib/actions";
+
+beforeEach(() => {
+  authMock.currentUser = GOOGLE_USER;
+});
 
 describe("generateReply — zod 驗證", () => {
   beforeEach(() => {
@@ -139,5 +154,52 @@ describe("generateReply — 錯誤路徑", () => {
       turnstileToken: "tk",
     });
     expect(r.error).toBe("回覆產生時發生未知錯誤，請稍後重試。");
+  });
+});
+
+describe("generateReply — 必須用 Google 帳號登入", () => {
+  beforeEach(() => {
+    httpsCallableMock.mockReset();
+  });
+
+  const validInput = {
+    scenario: "Child Injury",
+    parentMessage: "孩子在校跌倒",
+    turnstileToken: "tk",
+  };
+
+  it("沒登入 → needsLogin，且不呼叫後端", async () => {
+    authMock.currentUser = null;
+    const r = await generateReply(validInput);
+    expect(r.needsLogin).toBe(true);
+    expect(r.error).toBe("請先用 Google 帳號登入才能使用");
+    expect(httpsCallableMock).not.toHaveBeenCalled();
+  });
+
+  it("匿名登入不算登入 → needsLogin", async () => {
+    authMock.currentUser = { uid: "anon", isAnonymous: true, providerData: [] };
+    const r = await generateReply(validInput);
+    expect(r.needsLogin).toBe(true);
+    expect(httpsCallableMock).not.toHaveBeenCalled();
+  });
+
+  it("後端回 unauthenticated（英文訊息）→ 轉成中文並要求重新登入", async () => {
+    httpsCallableMock.mockRejectedValue(
+      Object.assign(new Error("Unauthenticated"), { code: "functions/unauthenticated" }),
+    );
+    const r = await generateReply(validInput);
+    expect(r.needsLogin).toBe(true);
+    expect(r.error).toBe("登入狀態已失效，請重新用 Google 帳號登入後再試一次。");
+  });
+
+  it("後端回 unauthenticated（中文訊息）→ 直接顯示後端訊息", async () => {
+    httpsCallableMock.mockRejectedValue(
+      Object.assign(new Error("請先用 Google 帳號登入才能使用"), {
+        code: "functions/unauthenticated",
+      }),
+    );
+    const r = await generateReply(validInput);
+    expect(r.needsLogin).toBe(true);
+    expect(r.error).toBe("請先用 Google 帳號登入才能使用");
   });
 });

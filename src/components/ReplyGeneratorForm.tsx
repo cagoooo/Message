@@ -10,6 +10,8 @@ import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { useFakeProgress } from "@/hooks/use-fake-progress";
 import { useFormDefaults } from "@/hooks/use-form-defaults";
 import { useToast } from "@/hooks/use-toast";
+import { useGoogleAuth } from "@/hooks/use-google-auth";
+import { AuthStatusBar, GoogleSignInButton } from "@/components/auth/GoogleLogin";
 import { detectPII, maskPII, type PIIWarning } from "@/lib/pii-detector";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { SideHistory } from "@/components/SideHistory";
@@ -129,11 +131,11 @@ function wrapWithInstructions(
   ].join("\n");
 }
 
-function SubmitButton({ isPending }: { isPending: boolean }) {
+function SubmitButton({ isPending, disabled = false }: { isPending: boolean; disabled?: boolean }) {
   return (
     <Button
       type="submit"
-      disabled={isPending}
+      disabled={isPending || disabled}
       size="lg"
       className="w-full sm:w-auto px-8 py-6 text-base font-semibold rounded-full bg-gradient-to-r from-primary via-primary to-accent text-primary-foreground shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35 hover:brightness-110 transform transition-all duration-300 ease-out hover:scale-[1.03] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/70 disabled:opacity-70 disabled:hover:scale-100"
     >
@@ -278,6 +280,37 @@ export function ReplyGeneratorForm() {
   }>({ open: false, warnings: [], pendingData: null });
 
   const { toast } = useToast();
+  // Google 登入：產生／調整回覆都必須先登入（後端也會驗證 ID Token）
+  const {
+    user: authUser,
+    loading: authLoading,
+    signingIn,
+    signIn,
+    signOut,
+  } = useGoogleAuth();
+  const handleSignIn = useCallback(async () => {
+    const r = await signIn();
+    if (r.ok) {
+      toast({
+        title: "登入成功",
+        description: "現在可以使用 AI 產生家長回覆了。",
+        variant: "success",
+      });
+    } else if (r.error) {
+      toast({ variant: "destructive", title: "Google 登入沒有成功", description: r.error });
+    }
+  }, [signIn, toast]);
+  const handleSignOut = useCallback(async () => {
+    await signOut();
+    toast({ title: "已登出", description: "要再使用 AI 產生回覆時，請重新用 Google 帳號登入。" });
+  }, [signOut, toast]);
+  const remindLogin = useCallback(() => {
+    toast({
+      variant: "destructive",
+      title: "請先用 Google 帳號登入",
+      description: "按「使用 Google 帳號登入」完成登入後，就能產生與調整回覆。",
+    });
+  }, [toast]);
   const copyToClipboard = useCopyToClipboard();
   const progress = useFakeProgress(isPending, !!generatedReply);
   const {
@@ -351,7 +384,7 @@ export function ReplyGeneratorForm() {
     if (state?.error && !state?.fieldErrors) {
       toast({
         variant: "destructive",
-        title: "產生回覆時發生錯誤",
+        title: state.needsLogin ? "請先用 Google 帳號登入" : "產生回覆時發生錯誤",
         description: state.error,
       });
     }
@@ -400,6 +433,10 @@ export function ReplyGeneratorForm() {
   const handleRefine = useCallback(
     (instruction: RefineInstruction) => {
       if (!generatedReply) return;
+      if (!authUser) {
+        remindLogin();
+        return;
+      }
       if (!turnstileToken) {
         toast({
           variant: "destructive",
@@ -430,7 +467,7 @@ export function ReplyGeneratorForm() {
         setTurnstileToken("");
       });
     },
-    [generatedReply, turnstileToken, form, toast, length, toneVal],
+    [generatedReply, authUser, remindLogin, turnstileToken, form, toast, length, toneVal],
   );
 
   const handleResetForm = useCallback(() => {
@@ -525,6 +562,11 @@ export function ReplyGeneratorForm() {
       return;
     }
 
+    if (!authUser) {
+      remindLogin();
+      return;
+    }
+
     if (!turnstileToken) {
       toast({
         variant: "destructive",
@@ -571,6 +613,13 @@ export function ReplyGeneratorForm() {
     <div className="w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[1440px] mx-auto grid lg:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_380px] gap-6 lg:gap-8 items-start animate-fade-up">
       {/* === 左欄：主對話卡 + 結果 === */}
       <div className="min-w-0">
+      <AuthStatusBar
+        user={authUser}
+        loading={authLoading}
+        signingIn={signingIn}
+        onSignIn={() => void handleSignIn()}
+        onSignOut={() => void handleSignOut()}
+      />
       <Card className="overflow-hidden border-primary/15 shadow-2xl shadow-primary/10 bg-card/95 backdrop-blur-sm rounded-3xl">
         <CardHeader className="relative p-5 sm:p-6 bg-gradient-to-br from-primary/8 via-secondary/40 to-accent/8 border-b border-dashed border-border/60">
           {/* 對話草稿區 + 步驟 pill — 左側「回」徽章 + 副標、右側 step pill / HistoryPanel 入口 */}
@@ -800,8 +849,22 @@ export function ReplyGeneratorForm() {
                 {isPending && !generatedReply && progress > 0 && (
                   <Progress value={progress} className="w-full h-3" />
                 )}
+                {!authLoading && !authUser && (
+                  <p className="text-center text-sm sm:text-base font-semibold text-primary">
+                    🔐 請先用 Google 帳號登入，才能產生回覆建議
+                  </p>
+                )}
                 <CardFooter className="flex flex-col sm:flex-row justify-center items-center gap-3 p-0 pt-2">
-                  <SubmitButton isPending={isPending} />
+                  {!authLoading && !authUser ? (
+                    <GoogleSignInButton
+                      size="lg"
+                      onClick={() => void handleSignIn()}
+                      signingIn={signingIn}
+                      className="w-full sm:w-auto"
+                    />
+                  ) : (
+                    <SubmitButton isPending={isPending} disabled={authLoading} />
+                  )}
                   <Button
                     type="button"
                     variant="outline"
@@ -836,7 +899,10 @@ export function ReplyGeneratorForm() {
           onCopy={handleCopyReply}
           onRefine={handleRefine}
           isRefining={isPending}
-          refineDisabled={!turnstileToken}
+          refineDisabled={!turnstileToken || !authUser}
+          loginRequired={!authLoading && !authUser}
+          onLogin={() => void handleSignIn()}
+          signingIn={signingIn}
         />
       )}
 

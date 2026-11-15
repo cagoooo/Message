@@ -1,4 +1,4 @@
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall, HttpsError, type CallableRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { setGlobalOptions } from "firebase-functions/v2";
 import { logger } from "firebase-functions";
@@ -327,6 +327,26 @@ function generationConfig() {
     : undefined;
 }
 
+// ============================================================
+// 登入檢查：只有「用 Google 帳號登入」的使用者才能呼叫 AI
+// ============================================================
+// onCall 框架收到 Authorization: Bearer <ID Token> 時會先用 firebase-admin
+// getAuth().verifyIdToken 驗證（無效／過期的 token 直接回 401，不會進到這裡）。
+// 這裡再擋「沒帶 token」與「不是 Google 登入（例如匿名登入）」的請求。
+const LOGIN_REQUIRED_MESSAGE = "請先用 Google 帳號登入才能使用";
+
+function requireGoogleUser(auth: CallableRequest["auth"]): string {
+  if (!auth?.uid) {
+    throw new HttpsError("unauthenticated", LOGIN_REQUIRED_MESSAGE);
+  }
+  const provider = auth.token?.firebase?.sign_in_provider;
+  // 匿名登入（anonymous）或其他登入方式一律拒絕
+  if (provider !== "google.com") {
+    throw new HttpsError("unauthenticated", LOGIN_REQUIRED_MESSAGE);
+  }
+  return auth.uid;
+}
+
 let cachedAi: ReturnType<typeof genkit> | null = null;
 function getAi() {
   if (!cachedAi) {
@@ -352,6 +372,10 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
     ],
   },
   async (request) => {
+    // 0. 先確認是 Google 帳號登入 —— 沒登入就直接拒絕，不驗 Turnstile、不呼叫 Gemini
+    const uid = requireGoogleUser(request.auth);
+    logger.info("generateParentReply called", { uid });
+
     // LINE 通知用 — 在 callable 內部讀，secret 才注入完成
     const lineToken = LINE_CHANNEL_ACCESS_TOKEN.value();
     const lineUserId = LINE_ADMIN_USER_ID.value();

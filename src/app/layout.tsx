@@ -7,6 +7,7 @@ import { FloatingAdButton } from '@/components/FloatingAdButton';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { AdminAccessButton } from '@/components/AdminAccessButton';
+import { INAPP_BROWSER_ESCAPE_SCRIPT } from '@/lib/inapp-browser-escape';
 
 const siteTitle = "教師回覆小幫手 Pro版";
 const siteDescription = "為親師溝通提供同理心 AI 回覆建議，含 12 種情境、語氣與長度自訂、PWA 離線、OCR 識圖。";
@@ -131,6 +132,10 @@ export default function RootLayout({
   return (
     <html lang="zh-Hant" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <head>
+        <script
+          // 安全：固定字串常數，沒有外來輸入；要在登入程式之前跑，所以放 head 最前面
+          dangerouslySetInnerHTML={{ __html: INAPP_BROWSER_ESCAPE_SCRIPT }}
+        />
         <script
           type="application/ld+json"
           // 安全：jsonLd 是上面靜態定義的常數，沒有外來輸入

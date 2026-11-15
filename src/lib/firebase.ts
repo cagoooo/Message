@@ -1,6 +1,7 @@
 "use client";
 
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
+import { getAuth, type Auth } from "firebase/auth";
 import { getFunctions, type Functions } from "firebase/functions";
 
 const firebaseConfig = {
@@ -13,6 +14,7 @@ const firebaseConfig = {
 };
 
 let appInstance: FirebaseApp | null = null;
+let authInstance: Auth | null = null;
 let functionsInstance: Functions | null = null;
 
 export function getFirebaseApp(): FirebaseApp {
@@ -21,8 +23,17 @@ export function getFirebaseApp(): FirebaseApp {
   return appInstance;
 }
 
+export function getFirebaseAuth(): Auth {
+  if (authInstance) return authInstance;
+  authInstance = getAuth(getFirebaseApp());
+  authInstance.languageCode = "zh-TW";
+  return authInstance;
+}
+
 export function getFn(): Functions {
   if (functionsInstance) return functionsInstance;
+  // 先初始化 Auth：httpsCallable 會自動在 Authorization 標頭帶上登入者的 ID Token
+  getFirebaseAuth();
   functionsInstance = getFunctions(getFirebaseApp(), "asia-east1");
   return functionsInstance;
 }
