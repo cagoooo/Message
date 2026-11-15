@@ -297,7 +297,7 @@ async function generateWithRetry(
   let lastErr: unknown = null;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const { text } = await ai.generate({ prompt });
+      const { text } = await ai.generate({ prompt, config: generationConfig() });
       if (!text) throw new Error("AI 回覆為空");
       return text;
     } catch (err) {
@@ -314,12 +314,25 @@ async function generateWithRetry(
   throw lastErr;
 }
 
+// 2026-11 預設改用 2.5-flash-lite（單價約 2.5-flash 的 1/3～1/6），仍可用 GEMINI_MODEL 覆寫
+function geminiModel(): string {
+  return process.env.GEMINI_MODEL || "googleai/gemini-2.5-flash-lite";
+}
+
+// 明確關閉思考，避免多付思考字詞費用。只對 2.5-flash 系列生效：
+// 若 GEMINI_MODEL 覆寫成 pro 等不能關思考的模型，就不帶這個設定以免報錯。
+function generationConfig() {
+  return geminiModel().includes("gemini-2.5-flash")
+    ? { thinkingConfig: { thinkingBudget: 0 } }
+    : undefined;
+}
+
 let cachedAi: ReturnType<typeof genkit> | null = null;
 function getAi() {
   if (!cachedAi) {
     cachedAi = genkit({
       plugins: [googleAI({ apiKey: GEMINI_API_KEY.value() })],
-      model: process.env.GEMINI_MODEL || "googleai/gemini-2.5-flash",
+      model: geminiModel(),
     });
   }
   return cachedAi;
