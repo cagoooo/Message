@@ -29,9 +29,17 @@ export interface AdvancedSettings {
   notes?: string;
 }
 
+/** 每人每天可用次數（與後端 functions/src/index.ts 的 DAILY_LIMIT 一致） */
+export const DAILY_LIMIT = 5;
+export const QUOTA_EXCEEDED_MESSAGE = `今天的 ${DAILY_LIMIT} 次已用完，明天（台北時間午夜後）再來`;
+
 export interface ActionResult {
   reply?: string;
   error?: string;
+  /** 今日剩餘次數（後端回傳；超過上限時為 0） */
+  remaining?: number;
+  /** true = 今天的次數已用完 */
+  quotaExceeded?: boolean;
   /** true = 沒登入或登入已失效，需要先用 Google 帳號登入 */
   needsLogin?: boolean;
   fieldErrors?: {
@@ -82,16 +90,18 @@ export async function generateReply(input: {
         notes?: string;
         imageDataUrl?: string;
       },
-      { reply: string }
+      { reply: string; remaining?: number; dailyLimit?: number }
     >(getFn(), "generateParentReply");
 
     const result = await callable(validated.data);
     const reply = result.data?.reply;
+    const remaining =
+      typeof result.data?.remaining === "number" ? result.data.remaining : undefined;
 
     if (!reply) {
-      return { error: "產生回覆失敗。小幫手未提供回應。" };
+      return { error: "產生回覆失敗。小幫手未提供回應。", remaining };
     }
-    return { reply };
+    return { reply, remaining };
   } catch (e) {
     console.error("[generateReply] callable failed:", e);
     // 後端回 401（沒登入、登入過期或 token 無效）
@@ -105,6 +115,14 @@ export async function generateReply(input: {
           : "登入狀態已失效，請重新用 Google 帳號登入後再試一次。",
         needsLogin: true,
       };
+    }
+    // 今天的 5 次已用完（後端在呼叫 AI 前就擋下）
+    const details =
+      e && typeof e === "object" && "details" in e
+        ? ((e as { details?: { reason?: string } }).details ?? undefined)
+        : undefined;
+    if (code === "functions/resource-exhausted" && details?.reason === "daily-limit") {
+      return { error: QUOTA_EXCEEDED_MESSAGE, quotaExceeded: true, remaining: 0 };
     }
     // FirebaseError.message 已是 server 端設好的友善文字（含中文），
     // 不要再加「小幫手錯誤：」前綴避免重複。

@@ -77,6 +77,57 @@ async function logStats(opts: LogStatsInput): Promise<void> {
   });
 }
 
+// ============================================================
+// 每日次數限制：每位 Google 登入使用者（uid）每天最多 5 次 AI 呼叫
+// 台北時間午夜重置；「產生回覆」與 4 個調整按鈕都各算 1 次
+// 計數放 rateLimits/user_<uid>_<YYYY-MM-DD>，帶 expireAt 欄位（可設 Firestore TTL 自動清除）
+// ============================================================
+const DAILY_LIMIT = 5;
+const QUOTA_EXCEEDED_MESSAGE = `今天的 ${DAILY_LIMIT} 次已用完，明天（台北時間午夜後）再來`;
+
+function quotaRef(uid: string, dateKey: string) {
+  return db.collection("rateLimits").doc(`user_${uid}_${dateKey}`);
+}
+
+/** 交易內檢查＋加 1，回傳本次之後的今日剩餘次數；超過上限丟 resource-exhausted */
+async function consumeDailyQuota(uid: string, dateKey: string): Promise<number> {
+  const ref = quotaRef(uid, dateKey);
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const count = snap.exists ? Number(snap.get("count")) || 0 : 0;
+    if (count >= DAILY_LIMIT) {
+      throw new HttpsError("resource-exhausted", QUOTA_EXCEEDED_MESSAGE, {
+        reason: "daily-limit",
+        remaining: 0,
+        dailyLimit: DAILY_LIMIT,
+      });
+    }
+    tx.set(
+      ref,
+      {
+        uid,
+        date: dateKey,
+        count: count + 1,
+        limit: DAILY_LIMIT,
+        updatedAt: FieldValue.serverTimestamp(),
+        // 保留 2 天後可由 TTL 自動刪除
+        expireAt: Timestamp.fromMillis(Date.now() + 2 * 24 * 3600 * 1000),
+      },
+      { merge: true },
+    );
+    return DAILY_LIMIT - (count + 1);
+  });
+}
+
+/** AI 本身失敗（例如 Google 過載）時把這次退回，不讓老師白白少一次 */
+async function refundDailyQuota(uid: string, dateKey: string): Promise<void> {
+  try {
+    await quotaRef(uid, dateKey).update({ count: FieldValue.increment(-1) });
+  } catch (err) {
+    logger.warn("refundDailyQuota failed (non-fatal)", err);
+  }
+}
+
 const TURNSTILE_VERIFY_URL =
   "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
@@ -162,6 +213,8 @@ async function verifyTurnstile(token: string, remoteIp?: string): Promise<void> 
 
 const OutputSchema = z.object({
   reply: z.string(),
+  remaining: z.number().optional(),
+  dailyLimit: z.number().optional(),
 });
 
 type Input = z.infer<typeof InputSchema>;
@@ -409,6 +462,10 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
       email: request.auth?.token?.email,
     };
 
+    // 今日剩餘次數（通過 Turnstile、扣次之後才知道），給 Chat 通知用
+    let remaining: number | undefined;
+    let quotaExceeded = false;
+
     const run = async (): Promise<Output> => {
       // LINE 通知用 — 在 callable 內部讀，secret 才注入完成
       const lineToken = LINE_CHANNEL_ACCESS_TOKEN.value();
@@ -440,6 +497,18 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
 
       // 1. 先驗 Turnstile token —— 失敗就直接 throw，不浪費 Gemini quota
       await verifyTurnstile(turnstileToken, request.rawRequest?.ip);
+
+      // 2. 通過人機驗證才扣次：每人每天 5 次（台北時間午夜重置）
+      const dateKey = getTaipeiDateKey();
+      try {
+        remaining = await consumeDailyQuota(uid, dateKey);
+      } catch (err) {
+        if (err instanceof HttpsError && err.code === "resource-exhausted") {
+          remaining = 0;
+          quotaExceeded = true;
+        }
+        throw err;
+      }
 
       try {
         const ai = getAi();
@@ -487,9 +556,12 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
           hasAdvanced,
         });
 
-        return { reply: text };
+        return { reply: text, remaining, dailyLimit: DAILY_LIMIT };
       } catch (err) {
         logger.error("generateParentReply failed", err);
+        // AI 失敗不算次數
+        await refundDailyQuota(uid, dateKey);
+        if (remaining !== undefined) remaining += 1;
         const msg = err instanceof Error ? err.message : "unknown error";
 
         fireNotify({
@@ -521,16 +593,27 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
         feature,
         user: chatUser,
         durationMs: Date.now() - startedAt,
+        remaining,
       });
       return result;
     } catch (err) {
-      await notifyAiUsage(SITE_NAME, {
-        kind: "failed",
-        feature,
-        user: chatUser,
-        durationMs: Date.now() - startedAt,
-        error: err,
-      });
+      if (quotaExceeded) {
+        await notifyAiUsage(SITE_NAME, {
+          kind: "quota",
+          feature,
+          user: chatUser,
+          dailyLimit: DAILY_LIMIT,
+        });
+      } else {
+        await notifyAiUsage(SITE_NAME, {
+          kind: "failed",
+          feature,
+          user: chatUser,
+          durationMs: Date.now() - startedAt,
+          error: err,
+          remaining,
+        });
+      }
       throw err;
     }
   },

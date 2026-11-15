@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { generateReply, type ActionResult } from "@/lib/actions";
+import { generateReply, DAILY_LIMIT, type ActionResult } from "@/lib/actions";
 import { useHistory, type HistoryEntry } from "@/hooks/use-history";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { useFakeProgress } from "@/hooks/use-fake-progress";
@@ -264,6 +264,8 @@ export function ReplyGeneratorForm() {
   const [generatedReply, setGeneratedReply] = useState<string | undefined>();
   const [isScenarioSelectOpen, setIsScenarioSelectOpen] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string>("");
+  /** 今日剩餘次數：呼叫過一次後由後端告知；還沒呼叫前是 null */
+  const [remainingToday, setRemainingToday] = useState<number | null>(null);
   const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const replyCardRef = useRef<HTMLDivElement>(null);
   const [uploadedImage, setUploadedImage] = useState<ProcessedImage | null>(null);
@@ -381,10 +383,15 @@ export function ReplyGeneratorForm() {
         });
       }, 100);
     }
+    if (typeof state?.remaining === "number") setRemainingToday(state.remaining);
     if (state?.error && !state?.fieldErrors) {
       toast({
         variant: "destructive",
-        title: state.needsLogin ? "請先用 Google 帳號登入" : "產生回覆時發生錯誤",
+        title: state.needsLogin
+          ? "請先用 Google 帳號登入"
+          : state.quotaExceeded
+            ? "今天的次數已用完"
+            : "產生回覆時發生錯誤",
         description: state.error,
       });
     }
@@ -854,6 +861,12 @@ export function ReplyGeneratorForm() {
                     🔐 請先用 Google 帳號登入，才能產生回覆建議
                   </p>
                 )}
+                <p className="text-center text-xs sm:text-sm text-muted-foreground">
+                  使用規則：每人每天 {DAILY_LIMIT} 次（產生回覆與 4 個調整按鈕各算 1 次，台北時間午夜重置）
+                  {authUser && remainingToday !== null && (
+                    <span className="ml-1 font-semibold text-foreground">・今日剩餘 {remainingToday} 次</span>
+                  )}
+                </p>
                 <CardFooter className="flex flex-col sm:flex-row justify-center items-center gap-3 p-0 pt-2">
                   {!authLoading && !authUser ? (
                     <GoogleSignInButton
@@ -887,7 +900,7 @@ export function ReplyGeneratorForm() {
       {state?.error && !state.fieldErrors && !isPending && (
         <Alert variant="destructive" className="mt-6">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>錯誤</AlertTitle>
+          <AlertTitle>{state.quotaExceeded ? "今天的次數已用完" : "錯誤"}</AlertTitle>
           <AlertDescription>{state.error}</AlertDescription>
         </Alert>
       )}

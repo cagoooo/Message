@@ -19,8 +19,9 @@ const lastBlockedByIp = new Map<string, number>();
 export type ChatUser = { name?: string | null; email?: string | null };
 
 export type AiUsageEvent =
-  | { kind: "success"; feature: string; user?: ChatUser; durationMs: number }
-  | { kind: "failed"; feature: string; user?: ChatUser; durationMs: number; error: unknown }
+  | { kind: "success"; feature: string; user?: ChatUser; durationMs: number; remaining?: number }
+  | { kind: "failed"; feature: string; user?: ChatUser; durationMs: number; error: unknown; remaining?: number }
+  | { kind: "quota"; feature: string; user?: ChatUser; dailyLimit: number }
   | { kind: "blocked"; feature: string; ip?: string; reason?: string };
 
 function taipeiTime(): string {
@@ -82,6 +83,8 @@ export async function notifyAiUsage(siteName: string, event: AiUsageEvent): Prom
       title = `✅ 有人使用了 ${siteName}`;
     } else if (event.kind === "failed") {
       title = `❌ ${siteName} 失敗`;
+    } else if (event.kind === "quota") {
+      title = `⛔ ${siteName}：今日次數已用完被擋`;
     } else {
       title = "⚠️ 未登入呼叫被擋";
     }
@@ -95,7 +98,14 @@ export async function notifyAiUsage(siteName: string, event: AiUsageEvent): Prom
       fields.push(["Email", event.user?.email || "（未提供 Email）"]);
     }
     fields.push(["時間", taipeiTime()]);
-    if (event.kind !== "blocked") fields.push(["耗時", seconds(event.durationMs)]);
+    if (event.kind === "success" || event.kind === "failed") {
+      fields.push(["耗時", seconds(event.durationMs)]);
+      if (typeof event.remaining === "number") fields.push(["今日剩餘", `${event.remaining} 次`]);
+    }
+    if (event.kind === "quota") {
+      fields.push(["今日剩餘", "0 次"]);
+      fields.push(["限制", `每人每天 ${event.dailyLimit} 次（台北時間午夜重置），已在呼叫 AI 前擋下`]);
+    }
     if (event.kind === "failed") fields.push(["錯誤摘要", errorSummary(event.error)]);
 
     const text = [title, ...fields.map(([k, v]) => `${k}：${v}`)].join("\n").slice(0, 4000);
