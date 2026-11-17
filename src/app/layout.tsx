@@ -161,7 +161,7 @@ export default function RootLayout({
                 <span>桃園市石門國小資訊組</span>
                 <span aria-hidden className="inline-block w-1 h-1 rounded-full bg-accent/60 mx-1" />
                 <a
-                  href="https://www.smes.tyc.edu.tw/"
+                  href="https://cagoooo.github.io/Akai/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="group inline-flex items-center gap-1.5 font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent hover:underline underline-offset-4 decoration-2 decoration-primary/60 transition-all"
