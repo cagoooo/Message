@@ -12,11 +12,15 @@ const VERSION_URL = `${BASE}/version.json`;
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000; // 每 5 分鐘檢查一次
 
+// 本工具 SW 建立的快取名稱：static-YYYYMMDD-<sha> / html-YYYYMMDD-<sha>（見 public/sw.template.js）
+// 同網域 (cagoooo.github.io) 其他工具的快取不可刪
+const isOwnCache = (k: string) => /^(static|html)-\d{8}-[0-9a-f]{7,40}$/.test(k);
+
 async function clearAllCachesAndReload() {
   try {
     if ("caches" in window) {
       const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k)));
+      await Promise.all(keys.filter(isOwnCache).map((k) => caches.delete(k)));
     }
     if ("serviceWorker" in navigator) {
       const reg = await navigator.serviceWorker.getRegistration();

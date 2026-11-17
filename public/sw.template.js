@@ -55,7 +55,8 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((k) => !k.endsWith(CACHE_VERSION))
+            // 只清本工具（static-/html- + 日期-sha）的舊快取，同網域其他工具的快取不動
+            .filter((k) => /^(static|html)-\d{8}-[0-9a-f]{7,40}$/.test(k) && !k.endsWith(CACHE_VERSION))
             .map((k) => caches.delete(k)),
         ),
       )

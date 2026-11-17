@@ -8,7 +8,9 @@
 ![Firebase](https://img.shields.io/badge/Firebase-Functions-orange?logo=firebase)
 ![Gemini](https://img.shields.io/badge/Gemini-2.5%20Flash-blue?logo=google)
 
-> 📌 **目前版本：v1.0.0**（版本管理自 2026-09-06 起，依據 `package.json`）
+> 📌 **目前版本：v1.0.1**（版本管理自 2026-09-06 起，依據 `package.json`）
+>
+> v1.0.1（2026-11-17）：立即更新／自我修復只清除本工具的快取與註冊，不再影響同網域其他工具
 
 ---
 
