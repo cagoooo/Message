@@ -545,16 +545,8 @@ export const generateParentReply = onCall<Input, Promise<Output>>(
           logger.warn("stats log failed (non-fatal)", err);
         });
 
-        // Fire-and-forget LINE 通知
-        fireNotify({
-          kind: "success",
-          scenario,
-          parentMessage,
-          reply: text,
-          mode,
-          hasImage: !!imageDataUrl,
-          hasAdvanced,
-        });
+        // 成功只發 Google Chat（見下方 notifyAiUsage），不推 LINE：
+        // 所有網站共用同一個 LINE 官方帳號，免費方案每月 200 則，留給失敗／錯誤告警
 
         return { reply: text, remaining, dailyLimit: DAILY_LIMIT };
       } catch (err) {
