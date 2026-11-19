@@ -30,7 +30,7 @@ export interface AdvancedSettings {
 }
 
 /** 每人每天可用次數（與後端 functions/src/index.ts 的 DAILY_LIMIT 一致） */
-export const DAILY_LIMIT = 5;
+export const DAILY_LIMIT = 3;
 export const QUOTA_EXCEEDED_MESSAGE = `今天的 ${DAILY_LIMIT} 次已用完，明天（台北時間午夜後）再來`;
 
 export interface ActionResult {
@@ -116,7 +116,7 @@ export async function generateReply(input: {
         needsLogin: true,
       };
     }
-    // 今天的 5 次已用完（後端在呼叫 AI 前就擋下）
+    // 今天的 3 次已用完（後端在呼叫 AI 前就擋下）
     const details =
       e && typeof e === "object" && "details" in e
         ? ((e as { details?: { reason?: string } }).details ?? undefined)
