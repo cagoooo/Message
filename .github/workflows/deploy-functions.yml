@@ -1,8 +1,17 @@
 name: Deploy Firebase Functions
 
 # 此 workflow 為手動觸發 only。
-# 預設 functions 變更後請本地執行：
-#   cd functions && firebase deploy --only functions
+#
+# ⚠️ 共用專案注意：teachers-ai-assistant-g4iph 同時放著 coolclass 的函式
+#    （notifyLine、notifyLineHealth、coolclassDailyDigest、coolclassStats），
+#    而且兩邊的 codebase 都叫 default。
+#    → 一律「點名部署」本 repo 匯出的函式，絕不用不點名的 `--only functions` 或 `--force`，
+#      否則會把 coolclass 的函式刪掉。
+#    → Firestore 規則也是兩個系統共用，不在這裡部署；要改規則請先合併 coolclass 的規則再手動部署。
+#
+# 本地手動部署（名單從建置後的程式產生）：
+#   cd functions && npm run build
+#   firebase deploy --only "$(node -e 'console.log(Object.keys(require("./lib/index.js")).map(f=>"functions:"+f).join(","));process.exit(0)')" --project teachers-ai-assistant-g4iph
 # 若想啟用 CI 自動部署，請：
 # 1. 建立 GCP service account 並下載 JSON key
 # 2. 在 GitHub repo Settings → Secrets 加入 GCP_SA_KEY
@@ -30,15 +39,23 @@ jobs:
         working-directory: functions
         run: npm run build
 
+      - name: List functions to deploy (named deploy only)
+        id: fns
+        working-directory: functions
+        run: |
+          FNS=$(node -e 'const m=require("./"+(require("./package.json").main||"index.js"));const k=Object.keys(m);if(!k.length)process.exit(1);console.log(k.map(f=>"functions:"+f).join(","));process.exit(0)')
+          echo "list=$FNS" >> "$GITHUB_OUTPUT"
+          echo "將點名部署：$FNS"
+
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+      # 點名部署：只更新本 repo 的函式，不會比對刪除 coolclass 的函式；不部署共用的 Firestore 規則
       - name: Deploy
         run: |
           npx firebase-tools deploy \
-            --only functions,firestore:rules \
+            --only "${{ steps.fns.outputs.list }}" \
             --project teachers-ai-assistant-g4iph \
-            --non-interactive \
-            --force
+            --non-interactive
