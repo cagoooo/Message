@@ -87,6 +87,14 @@
   "overrides": {
     "next": {
       "postcss": "^8.5.33"
+    },
+    "@grpc/grpc-js": "^1.14.7",
+    "request": {
+      "form-data": "^2.5.6",
+      "qs": "^6.14.1"
+    },
+    "mkdirp": {
+      "minimist": "^0.2.4"
     }
   }
 }
