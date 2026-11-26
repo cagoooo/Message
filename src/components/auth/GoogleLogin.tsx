@@ -122,11 +122,11 @@ export function AuthStatusBar({
           </span>
         )}
         <div className="min-w-0">
-          <p className="text-sm sm:text-base font-semibold text-foreground truncate">
+          <p className="text-base sm:text-lg font-bold text-foreground truncate">
             已登入：{name}
           </p>
           {user.email && user.displayName && (
-            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+            <p className="text-sm font-medium text-muted-foreground truncate">{user.email}</p>
           )}
         </div>
       </div>
