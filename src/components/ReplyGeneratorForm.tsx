@@ -576,14 +576,14 @@ export function ReplyGeneratorForm() {
           {/* 對話草稿區 + 步驟 pill — 左側「回」徽章 + 副標、右側 step pill / HistoryPanel 入口 */}
           <div className="relative flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-primary-foreground font-bold text-lg shadow-md shadow-primary/30">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-primary-foreground font-black text-xl shadow-lg shadow-primary/40">
                 回
               </div>
               <div>
-                <CardTitle className="text-base sm:text-lg font-semibold text-foreground tracking-tight">
+                <CardTitle className="text-xl sm:text-2xl font-extrabold text-foreground tracking-tight">
                   對話草稿區
                 </CardTitle>
-                <CardDescription className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                <CardDescription className="text-sm sm:text-base text-foreground/70 font-medium mt-1">
                   家長訊息 · 選擇情境 · 產生回覆
                 </CardDescription>
               </div>
@@ -625,8 +625,8 @@ export function ReplyGeneratorForm() {
                     : "w-full bg-background";
                   return (
                     <FormItem>
-                      <FormLabel className="inline-flex items-center gap-2 px-3.5 py-1.5 text-sm font-semibold rounded-full bg-secondary text-secondary-foreground border border-border/70 shadow-sm">
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary" />
+                      <FormLabel className="inline-flex items-center gap-2 px-4 py-2 text-base font-bold rounded-full bg-secondary text-secondary-foreground border border-primary/25 shadow-sm">
+                        <span className="inline-block w-2 h-2 rounded-full bg-primary" />
                         選擇情境
                       </FormLabel>
                       <Select
@@ -736,11 +736,11 @@ export function ReplyGeneratorForm() {
                         : "text-muted-foreground";
                   return (
                     <FormItem>
-                      <FormLabel className="inline-flex items-center gap-2 px-3.5 py-1.5 text-sm font-semibold rounded-full bg-secondary text-secondary-foreground border border-border/70 shadow-sm">
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent" />
+                      <FormLabel className="inline-flex items-center gap-2 px-4 py-2 text-base font-bold rounded-full bg-secondary text-secondary-foreground border border-accent/30 shadow-sm">
+                        <span className="inline-block w-2 h-2 rounded-full bg-accent" />
                         家長訊息 / 陳述狀況
                         {hasImage && (
-                          <span className="ml-1 text-[11px] font-normal text-muted-foreground">
+                          <span className="ml-1 text-xs font-semibold text-muted-foreground">
                             （已附截圖・可不填）
                           </span>
                         )}
